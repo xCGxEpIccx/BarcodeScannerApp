@@ -19,6 +19,10 @@ jobs:
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev libgstreamer1.0-dev lld gstreamer1.0-plugins-base gstreamer1.0-plugins-good
           pip install --upgrade buildozer cython
 
+      - name: Fix Autoconf Macros
+        run: |
+          sudo ln -s /usr/share/aclocal/libtool.m4 /usr/share/aclocal/ltoptions.m4 /usr/share/aclocal/ltsugar.m4 /usr/share/aclocal/ltversion.m4 /usr/share/aclocal/lt~obsolete.m4 /usr/share/autoconf/ 2>/dev/null || true
+
       - name: Create main.py and buildozer.spec
         run: |
           buildozer init
