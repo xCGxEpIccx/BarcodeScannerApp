@@ -22,18 +22,8 @@ jobs:
       - name: Install Buildozer dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld wget
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
           pip install --upgrade buildozer cython
-
-      - name: Force Install Stable Android NDK 25b
-        run: |
-          cd /home/runner/work
-          echo "Lade stabiles Android NDK 25b herunter..."
-          wget -q https://google.com
-          echo "Entpacke NDK..."
-          unzip -q android-ndk-r25b-linux.zip
-          rm android-ndk-r25b-linux.zip
-          echo "NDK erfolgreich im Hauptverzeichnis installiert."
 
       - name: Create main.py and buildozer.spec
         run: |
@@ -42,8 +32,8 @@ jobs:
           sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
           sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
           
-          # Setzt den Pfad messerscharf auf das entpackte Verzeichnis
-          sed -i 's/# android.ndk_path =/android.ndk_path = \/home\/runner\/work\/android-ndk-r25b/g' buildozer.spec
+          # Zwingt Buildozer, die absolut stabile NDK-Version 25b selbst herunterzuladen
+          sed -i 's/#android.ndk = 25b/android.ndk = 25b/g' buildozer.spec
 
       - name: Auto-Accept Android SDK Licenses
         run: |
