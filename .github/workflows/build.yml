@@ -8,16 +8,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java 17 (Zwingend erforderlich!)
-        uses: actions/setup-java@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android NDK (Stabile Version 25c)
-        uses: android-actions/setup-android@v3
-        with:
-          ndk-version: '25.2.9519653'
+          python-version: '3.10'
 
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
@@ -25,16 +19,29 @@ jobs:
           path: ~/.buildozer
           key: ${{ runner.os }}-buildozer-v1
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
       - name: Install Buildozer dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld wget
           pip install --upgrade buildozer cython
+
+      - name: Force Install Stable Android NDK 25b
+        run: |
+          # Legt den Standardordner für Android-Werkzeuge an
+          mkdir -p ~/.buildozer/android/platform
+          cd ~/.buildozer/android/platform
+          
+          # Lädt die fehlerfreie NDK-Version 25b direkt von den Google-Servern herunter
+          echo "Lade stabiles Android NDK 25b herunter..."
+          wget -q https://google.com
+          
+          # Entpackt das NDK direkt an die richtige Stelle
+          echo "Entpacke NDK..."
+          unzip -q android-ndk-r25b-linux.zip
+          rm android-ndk-r25b-linux.zip
+          
+          # Zeigt dem System, wo das NDK liegt
+          echo "NDK erfolgreich installiert."
 
       - name: Create main.py and buildozer.spec
         run: |
@@ -42,7 +49,9 @@ jobs:
           sed -i 's/requirements = python3,kivy/requirements = python3, kivy, opencv/g' buildozer.spec
           sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
           sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-          sed -i 's/# android.ndk_path =/android.ndk_path = \/usr\/local\/lib\/android\/sdk\/ndk\/25.2.9519653/g' buildozer.spec
+          
+          # Zwingt Buildozer in der Datei, exakt unseren neuen NDK-Ordner zu benutzen
+          sed -i 's/# android.ndk_path =/android.ndk_path = ~\/ .buildozer\/android\/platform\/android-ndk-r25b/g' buildozer.spec
 
       - name: Auto-Accept Android SDK Licenses
         run: |
