@@ -17,7 +17,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: ${{ runner.os }}-buildozer-${{ hashFiles('**/build.yml') }}
+          key: ${{ runner.os }}-buildozer-v1
 
       - name: Install Buildozer dependencies
         run: |
@@ -25,20 +25,22 @@ jobs:
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
           pip install --upgrade buildozer cython
 
-      - name: Create main.py and buildozer.spec
-        run: |
-          buildozer init
-          sed -i 's/requirements = python3,kivy/requirements = python3, kivy, opencv/g' buildozer.spec
-          sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
-
       - name: Auto-Accept Android SDK Licenses
         run: |
           mkdir -p ~/.android
           touch ~/.android/repositories.cfg
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: Create main.py and buildozer.spec
+        run: |
+          buildozer init
+          sed -i 's/requirements = python3,kivy/requirements = python3, kivy, opencv/g' buildozer.spec
+          sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
+          sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+          sed -i 's/#android.ndk_path =/android.ndk = 25b/g' buildozer.spec
+
       - name: Build with Buildozer
-        run: yes | buildozer -v android debug
+        run: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
