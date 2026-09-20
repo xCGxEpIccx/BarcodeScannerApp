@@ -8,10 +8,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Java 17 (Zwingend erforderlich!)
+        uses: actions/setup-java@v4
         with:
-          python-version: '3.10'
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Setup Android NDK (Stabile Version 25c)
         uses: android-actions/setup-android@v3
@@ -24,16 +25,20 @@ jobs:
           path: ~/.buildozer
           key: ${{ runner.os }}-buildozer-v1
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
       - name: Install Buildozer dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
+          sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
           pip install --upgrade buildozer cython
 
       - name: Create main.py and buildozer.spec
         run: |
           buildozer init
-          # Hier tragen wir die stabile NDK-Version direkt fest in die Konfiguration ein
           sed -i 's/requirements = python3,kivy/requirements = python3, kivy, opencv/g' buildozer.spec
           sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
           sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
