@@ -22,7 +22,6 @@ jobs:
 
       - name: Custom Buildozer Engine
         run: |
-          # Installiert die offizielle, stabile Version, die das NDK-Problem umgeht
           pip install buildozer==1.5.0 python-for-android==2023.5.21
 
       - name: Auto-Accept Android SDK Licenses
@@ -41,10 +40,7 @@ jobs:
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas
           version = 1.0
-          
-          # Wir erzwingen hier nur die absolut kritischen Kern-Pakete!
           requirements = python3, kivy==2.2.1, opencv-python
-          
           orientation = portrait
           fullscreen = 0
           android.permissions = INTERNET, CAMERA
@@ -54,6 +50,9 @@ jobs:
           android.skip_apk_rescale = True
           p4a.branch = master
           
+          # Hier zwingen wir Buildozer in der Datei auf das stabile NDK r27b
+          android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
+          
           [buildozer]
           log_level = 2
           warn_on_root = 1
@@ -61,9 +60,11 @@ jobs:
 
       - name: Build with Buildozer
         env:
+          # Hier zwingen wir das gesamte Linux-System global auf das stabile NDK r27b
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
           WERROR: "0"
-          CFLAGS: "-Wno-error -Wno-format-security"
-          CXXFLAGS: "-Wno-error -Wno-format-security"
+          CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
+          CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
         run: yes | buildozer -v android debug
 
       - name: Upload APK
