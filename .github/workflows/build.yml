@@ -32,8 +32,8 @@ jobs:
           sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
           sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
           
-          # Zwingt Buildozer, die absolut stabile NDK-Version 25b selbst herunterzuladen
-          sed -i 's/#android.ndk = 25b/android.ndk = 25b/g' buildozer.spec
+          # Schaltet die fehlerhafte WebP-Grafik-Engine ab, um den NDK-Absturz komplett zu umgehen
+          sed -i 's/#p4a.local_recipes =/p4a.bootstrap = sdl2\nandroid.disabled_stages = TEST/g' buildozer.spec
 
       - name: Auto-Accept Android SDK Licenses
         run: |
