@@ -58,10 +58,14 @@ jobs:
           warn_on_root = 1
           EOF
 
+      - name: Wipe out broken libwebp files
+        run: |
+          # Löscht den fehlerhaften libwebp-Quellcode aus dem geladenen Cache, damit er übersprungen wird
+          find ~/.buildozer/ -type d -name "libwebp" -exec rm -rf {} + || true
+          find ~/.buildozer/ -type d -name "webp" -exec rm -rf {} + || true
+
       - name: Build with Buildozer
         env:
-          # Diese beiden magischen Zeilen zwingen den Grafik-Compiler, das fehlerhafte WebP einfach zu überspringen!
-          USE_SDL2_IMAGE_WEBP: "0"
           WERROR: "0"
         run: yes | buildozer -v android debug
 
