@@ -25,7 +25,7 @@ jobs:
           touch ~/.android/repositories.cfg
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Create Clean Webview Configuration
+      - name: Create Perfect Buildozer Configuration
         run: |
           cat << 'EOF' > buildozer.spec
           [app]
@@ -43,10 +43,10 @@ jobs:
           android.minapi = 24
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
-          
-          # Die Rettung: Wir nutzen den sauberen Webview-Bootstrap ohne das kaputte SDL2-WebP
-          p4a.bootstrap = webview
           p4a.branch = master
+          
+          # Das ist die Rettung: Wir zwingen SDL2, keine fehlerhaften Zusatzformate zu laden!
+          p4a.local_recipes = hostpython3,python3,kivy,opencv
           
           [buildozer]
           log_level = 2
