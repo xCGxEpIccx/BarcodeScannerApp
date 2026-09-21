@@ -22,8 +22,8 @@ jobs:
 
       - name: Custom Buildozer Engine
         run: |
-          # Installiert eine feste Buildozer-Version, die das NDK-Problem umgeht
-          pip install buildozer==1.5.0 python-for-android==2023.05.24
+          # Installiert die offizielle, stabile Version, die das NDK-Problem umgeht
+          pip install buildozer==1.5.0 python-for-android==2023.5.21
 
       - name: Auto-Accept Android SDK Licenses
         run: |
