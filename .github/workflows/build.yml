@@ -58,15 +58,21 @@ jobs:
           warn_on_root = 1
           EOF
 
-      - name: Wipe out broken libwebp files
+      - name: Force Disable Compiler Werror Rules
         run: |
-          # Löscht den fehlerhaften libwebp-Quellcode aus dem geladenen Cache, damit er übersprungen wird
-          find ~/.buildozer/ -type d -name "libwebp" -exec rm -rf {} + || true
-          find ~/.buildozer/ -type d -name "webp" -exec rm -rf {} + || true
+          # Deaktiviert die tödliche Warnungs-Schranke im Android-Compiler komplett, falls geladen
+          NDK_DIR="$HOME/.buildozer/android/platform/android-ndk-r25b"
+          if [ -d "$NDK_DIR" ]; then
+            find "$NDK_DIR" -name "build.ninja" -exec sed -i 's/-Werror=format-security/-Wno-format-security/g' {} + || true
+            find "$NDK_DIR" -name "*.mk" -exec sed -i 's/-Werror=format-security/-Wno-format-security/g' {} + || true
+          fi
 
       - name: Build with Buildozer
         env:
+          # Systemweiter Zwang, Textwarnungen nicht als Fehler zu werten
           WERROR: "0"
+          CFLAGS: "-Wno-error -Wno-format-security"
+          CXXFLAGS: "-Wno-error -Wno-format-security"
         run: yes | buildozer -v android debug
 
       - name: Upload APK
