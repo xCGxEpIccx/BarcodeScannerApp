@@ -33,7 +33,6 @@ jobs:
 
       - name: Create Custom Buildozer Configuration
         run: |
-          # Erstellt eine komplett eigene Konfiguration ohne automatische NDK-Erkennung
           cat << 'EOF' > buildozer.spec
           [app]
           title = BarcodeScanner
@@ -51,6 +50,10 @@ jobs:
           android.ndk = 25b
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
+          
+          # Diese 3 wichtigen Zeilen haben dem System gefehlt:
+          source.include_patterns = assets/*
+          p4a.branch = master
           
           [buildozer]
           log_level = 2
