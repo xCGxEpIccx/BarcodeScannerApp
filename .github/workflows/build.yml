@@ -18,11 +18,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
           pip install --upgrade pip
-          pip install cython
-
-      - name: Custom Buildozer Engine
-        run: |
-          pip install buildozer==1.5.0 python-for-android==2023.5.21
+          pip install cython buildozer
 
       - name: Auto-Accept Android SDK Licenses
         run: |
@@ -40,7 +36,7 @@ jobs:
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas
           version = 1.0
-          requirements = python3, kivy==2.2.1, opencv-python
+          requirements = python3, kivy, opencv
           orientation = portrait
           fullscreen = 0
           android.permissions = INTERNET, CAMERA
@@ -49,6 +45,8 @@ jobs:
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
           p4a.branch = master
+          
+          # Zwingt Buildozer fest auf das stabile NDK r27b
           android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
           
           [buildozer]
@@ -59,8 +57,9 @@ jobs:
       - name: Build with Buildozer
         env:
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          # Die Rettung: Wir schalten das fehlerhafte Harfbuzz-Paket komplett aus!
+          # Schaltet alle fehlerhaften Grafik- und Textpakete der letzten Stunden knallhart ab!
           USE_HARFBUZZ: "0"
+          USE_SDL2_IMAGE_WEBP: "0"
           WERROR: "0"
           CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
           CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
