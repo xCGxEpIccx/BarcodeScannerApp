@@ -4,25 +4,34 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      # Define critical paths and versions at the job level for consistency
+      ANDROID_API: '33'
+      ANDROID_MINAPI: '24'
+      NDK_VERSION: '27.3.13750724' # <<< CRITICAL: Verify this NDK version exists!
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+      # 1. Setup Python Environment
+      - name: Setup Python and Dependencies
+        run: |
+          echo "Setting up Python 3.10 environment..."
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip setuptools wheel # Ensure base tools are current
 
-      # 1. Install System Dependencies (Kept minimal and essential)
+      # 2. Install System Libraries (Using 'set -e' to fail fast)
       - name: Install Build Dependencies
         run: |
-          echo "Installing necessary system packages..."
+          echo "Installing system dependencies..."
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
-          pip install --upgrade pip
+          # Using a combined command ensures all packages are installed together
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld build-essential
+          # Install Python tools in the activated environment
           pip install cython buildozer
 
-      # 2. Android SDK Setup (More robust setup for licenses and tools)
+      # 3. Android SDK Setup and License Acceptance
       - name: Accept Android Licenses
         run: |
           echo "Attempting to accept required Android SDK licenses..."
@@ -30,7 +39,7 @@ jobs:
           touch ~/.android/repositories.cfg
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      # 3. Create Custom Buildozer Configuration File
+      # 4. Create Custom Buildozer Configuration File (Using variables)
       - name: Generate buildozer.spec
         run: |
           cat << 'EOF' > buildozer.spec
@@ -45,37 +54,39 @@ jobs:
           orientation = portrait
           fullscreen = 0
           android.permissions = INTERNET, CAMERA
-          android.api = 33
-          android.minapi = 24
+          android.api = ${{ env.ANDROID_API }}
+          android.minapi = ${{ env.ANDROID_MINAPI }}
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
           p4a.branch = master
           
-          # !!! WARNING: This path MUST be correct for your NDK setup !!!
-          # If this fails, you must manually find and update the exact NDK version path here.
-          android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
+          # !!! WARNING: CRITICAL PATH !!! 
+          # This MUST point to the correct NDK location on the runner machine.
+          android.ndk_path = /usr/local/lib/android/sdk/ndk/${{ env.NDK_VERSION }}
           
           [buildozer]
           log_level = 2
           warn_on_root = 1
           EOF
 
-      # 4. Build with Buildozer
+      # 5. Build with Buildozer
       - name: Build APK using Buildozer
         env:
-          # Setting environment variables for the build process
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          USE_HARFBUZZ: "0" # Disable HARFBUZZ (often causes issues)
-          USE_SDL2_IMAGE_WEBP: "0" # Disable WEBP support
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/${{ env.NDK_VERSION }}
+          # Stability flags to prevent common build errors
+          USE_HARFBUZZ: "0" 
+          USE_SDL2_IMAGE_WEBP: "0" 
           WERROR: "0"
           CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
           CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
         run: |
-          echo "Starting Android build..."
-          # Use '&&' to ensure the script fails immediately if any command fails
+          echo "Starting Android build with verbosity level 2..."
+          # Using 'set -e' within the shell script ensures that if any command fails, 
+          # the entire job stops immediately instead of continuing into potentially broken commands.
+          set -e
           buildozer -v android debug
 
-      # 5. Upload APK Artifact
+      # 6. Upload APK Artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
