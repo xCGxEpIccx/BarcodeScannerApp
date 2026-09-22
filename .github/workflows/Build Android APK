@@ -1,0 +1,83 @@
+# name: Build Android APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 1. Install System Dependencies (Kept minimal and essential)
+      - name: Install Build Dependencies
+        run: |
+          echo "Installing necessary system packages..."
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
+          pip install --upgrade pip
+          pip install cython buildozer
+
+      # 2. Android SDK Setup (More robust setup for licenses and tools)
+      - name: Accept Android Licenses
+        run: |
+          echo "Attempting to accept required Android SDK licenses..."
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      # 3. Create Custom Buildozer Configuration File
+      - name: Generate buildozer.spec
+        run: |
+          cat << 'EOF' > buildozer.spec
+          [app]
+          title = BarcodeScanner
+          package.name = barcodescanner
+          package.domain = org.test
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas
+          version = 1.0
+          requirements = python3, kivy, opencv
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET, CAMERA
+          android.api = 33
+          android.minapi = 24
+          android.accept_sdk_license = True
+          android.skip_apk_rescale = True
+          p4a.branch = master
+          
+          # !!! WARNING: This path MUST be correct for your NDK setup !!!
+          # If this fails, you must manually find and update the exact NDK version path here.
+          android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
+          
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+
+      # 4. Build with Buildozer
+      - name: Build APK using Buildozer
+        env:
+          # Setting environment variables for the build process
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          USE_HARFBUZZ: "0" # Disable HARFBUZZ (often causes issues)
+          USE_SDL2_IMAGE_WEBP: "0" # Disable WEBP support
+          WERROR: "0"
+          CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
+          CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
+        run: |
+          echo "Starting Android build..."
+          # Use '&&' to ensure the script fails immediately if any command fails
+          buildozer -v android debug
+
+      # 5. Upload APK Artifact
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: bin/*.apk
