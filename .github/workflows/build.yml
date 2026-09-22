@@ -24,6 +24,7 @@ jobs:
         run: |
           mkdir -p ~/.android
           touch ~/.android/repositories.cfg
+          # Installiert die Lizenzen offiziell vorab im System
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Create Custom Buildozer Configuration
@@ -45,8 +46,6 @@ jobs:
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
           p4a.branch = master
-          
-          # Zwingt Buildozer fest auf das stabile NDK r27b
           android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
           
           [buildozer]
@@ -57,13 +56,11 @@ jobs:
       - name: Build with Buildozer
         env:
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          # Schaltet alle fehlerhaften Grafik- und Textpakete der letzten Stunden knallhart ab!
-          USE_HARFBUZZ: "0"
-          USE_SDL2_IMAGE_WEBP: "0"
           WERROR: "0"
           CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
           CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
-        run: yes | buildozer -v android debug
+        # HIER IST DIE ÄNDERUNG: Das fehleranfällige "yes |" wurde komplett gelöscht!
+        run: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
