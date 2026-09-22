@@ -49,8 +49,6 @@ jobs:
           android.accept_sdk_license = True
           android.skip_apk_rescale = True
           p4a.branch = master
-          
-          # Hier zwingen wir Buildozer in der Datei auf das stabile NDK r27b
           android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
           
           [buildozer]
@@ -60,8 +58,9 @@ jobs:
 
       - name: Build with Buildozer
         env:
-          # Hier zwingen wir das gesamte Linux-System global auf das stabile NDK r27b
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          # Die Rettung: Wir schalten das fehlerhafte Harfbuzz-Paket komplett aus!
+          USE_HARFBUZZ: "0"
           WERROR: "0"
           CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
           CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
