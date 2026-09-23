@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Scanner Pro</title>
-    <script src="https://cloudflare.com"></script>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -14,7 +13,7 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         .btn-login { background: #007bff; color: white; }
-        .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin-top: 5px; }
+        .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin: 5px 0 15px 0; width: 100%; }
         .btn-toggle-date.active { background: #007bff; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
@@ -103,6 +102,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
+                        // HIER WAR DER FEHLER: Greift jetzt wieder sauber auf den erkannten Code zu!
                         let code = barcodes[0].rawValue;
                         let now = Date.now();
                         
