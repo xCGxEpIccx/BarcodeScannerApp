@@ -14,10 +14,14 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         .btn-login { background: #007bff; color: white; }
+        .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin-top: 5px; }
+        .btn-toggle-date.active { background: #007bff; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-size: 16px; }
-        .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .date-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
+        .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; position: relative; }
+        .product-header { display: flex; justify-content: space-between; align-items: center; }
+        .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
+        .date-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -36,6 +40,9 @@
             
             <video id="webcam" autoplay playsinline></video>
             
+            <!-- Der neue Schalter für das Ablaufdatum direkt unter der Kamera -->
+            <button class="btn-toggle-date active" id="date-toggle-btn" onclick="toggleDateQuery()">Ablaufdatum-Abfrage: AN ⏱️</button>
+            
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
             
@@ -50,14 +57,14 @@
         let lastScanTime = 0;
         let barcodeDetector;
         let isScanningBlock = false;
+        let askForDate = true; // Speichert, ob das Datum aufpoppen soll
 
-        // Deine persönliche Produkt-Datenbank (wird per Pop-up erweitert!)
+        // Deine persönliche Produkt-Datenbank
         let produktDatenbank = {
             "9120139158524": "Vollmilch 1L (Penny)",
             "9019100592002": "Ottakringer Bier 0.5L"
         };
 
-        // Das neue Bestands-System mit Datums-Trennung
         let bestand = {};
 
         function checkPassword() {
@@ -101,35 +108,33 @@
                         let code = barcodes[0].rawValue;
                         let now = Date.now();
                         
-                        // Knallharte 3-Sekunden-Sperre gegen versehentliche Doppelscans
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
                         
                         lastScannedCode = code;
                         lastScanTime = now;
-                        isScanningBlock = true; // Scanner einfrieren
+                        isScanningBlock = true;
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        // Namen ermitteln oder neu anlegen
+                        // Automatische Erkennung bekannter Produkte, sonst Abfrage
                         if (!produktDatenbank[code]) {
                             let neuerName = prompt("Neues Produkt erkannt! Bitte Namen eingeben:", "Produkt " + code);
                             if (neuerName) {
                                 produktDatenbank[code] = neuerName;
                             } else {
-                                produktDatenbank[code] = code;
+                                produktDatenbank[code] = "Unbekannt (" + code + ")";
                             }
                         }
 
-                        // Ablaufdatum abfragen (nur beim Hinzufügen sinnvoll)
+                        // Ablaufdatum abfragen (nur wenn Modus=Hinzufügen UND der Schalter AN ist)
                         let ablaufdatum = "Kein Datum";
-                        if (mode === "add") {
-                            let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM.YY) oder leer lassen:", "");
+                        if (mode === "add" && askForDate) {
+                            let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM) oder leer lassen:", "");
                             if (datumInput) ablaufdatum = datumInput;
                         }
 
                         verarbeiteBestand(code, ablaufdatum);
                         
-                        // Scanner nach Pause wieder freischalten
                         setTimeout(() => { isScanningBlock = false; }, 2000);
                     }
                 } catch (e) {
@@ -146,10 +151,9 @@
             if (mode === "add") {
                 bestand[code][datum] = (bestand[code][datum] || 0) + 1;
             } else if (mode === "remove") {
-                // Beim Entfernen löschen wir das älteste Datum oder fragen, falls es mehrere gibt
                 let daten = Object.keys(bestand[code]);
                 if (daten.length > 0) {
-                    let zielDatum = daten[0]; // Standard: das erste gefundene Datum nehmen
+                    let zielDatum = daten[0];
                     if (daten.length > 1) {
                         let auswahl = prompt("Welches Ablaufdatum entfernen? Verfügbar:\n" + daten.join("\n"), daten[0]);
                         if (bestand[code][auswahl]) zielDatum = auswahl;
@@ -161,6 +165,29 @@
             }
 
             updateListDisplay();
+        }
+
+        // Funktion für den neuen Ablaufdatum-Schalter unter der Kamera
+        function toggleDateQuery() {
+            askForDate = !askForDate;
+            const btn = document.getElementById("date-toggle-btn");
+            if (askForDate) {
+                btn.innerText = "Ablaufdatum-Abfrage: AN ⏱️";
+                btn.classList.add("active");
+            } else {
+                btn.innerText = "Ablaufdatum-Abfrage: AUS ❌";
+                btn.classList.remove("active");
+            }
+        }
+
+        // Funktion für den lila Namensänderungs-Button (N)
+        function renameProduct(code) {
+            let alterName = produktDatenbank[code] || code;
+            let neuerName = prompt("Produktnamen ändern:", alterName);
+            if (neuerName) {
+                produktDatenbank[code] = neuerName;
+                updateListDisplay();
+            }
         }
 
         function setMode(newMode) {
@@ -188,25 +215,7 @@
                 let code = produktCodes[i];
                 let name = produktDatenbank[code] || code;
                 
-                // Berechnet die Gesamtstückzahl aller Ablaufdaten für dieses Produkt
                 let gesamtAnzahl = 0;
                 let datenHtml = "";
                 let daten = Object.keys(bestand[code]);
                 
-                for (let j = 0; j < daten.length; j++) {
-                    let d = daten[j];
-                    let anz = bestand[code][d];
-                    gesamtAnzahl += anz;
-                    datenHtml += `<div class="date-item">↳ Ablaufdatum: <b>${d}</b> | Anzahl: ${anz} Stk.</div>`;
-                }
-                
-                html += `<div class="product-item">
-                            📦 <b>${name}</b> | Gesamt: <b>${gesamtAnzahl} Stk.</b>
-                            ${datenHtml}
-                         </div>`;
-            }
-            listDiv.innerHTML = html;
-        }
-    </script>
-</body>
-</html>
