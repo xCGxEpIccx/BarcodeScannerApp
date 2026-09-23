@@ -8,16 +8,17 @@ from kivy.uix.camera import Camera
 class BarcodeScannerApp(App):
     def build(self):
         self.products = {}
-        self.mode = "add"  # Standardmodus: Hinzufügen
+        self.mode = "add"
 
-        # Hauptlayout
         main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-        # 1. Kamerabild (Nativ über Kivy, ohne OpenCV-Müll!)
-        self.camera = Camera(play=True, resolution=(640, 480))
-        main_layout.add_widget(self.camera)
+        # Startet die Kamera direkt nativ über das System
+        try:
+            self.camera = Camera(play=True, resolution=(640, 480))
+            main_layout.add_widget(self.camera)
+        except Exception:
+            main_layout.add_widget(Label(text="Kamera konnte nicht geladen werden"))
 
-        # 2. Status-Anzeige
         self.status_label = Label(
             text="Modus: Hinzufügen (+) | Bereit zum Scannen",
             size_hint_y=None,
@@ -26,7 +27,6 @@ class BarcodeScannerApp(App):
         )
         main_layout.add_widget(self.status_label)
 
-        # 3. Modus-Buttons
         btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
         self.btn_add = Button(text="Hinzufügen (+)", background_color=(0, 0.7, 0, 1))
         self.btn_add.bind(on_press=self.set_add_mode)
@@ -38,7 +38,6 @@ class BarcodeScannerApp(App):
         btn_layout.add_widget(self.btn_remove)
         main_layout.add_widget(btn_layout)
 
-        # 4. Scrollbare Bestandsliste
         scroll = ScrollView()
         self.list_label = Label(
             text="Dein Bestand ist leer.",
@@ -59,16 +58,6 @@ class BarcodeScannerApp(App):
     def set_remove_mode(self, instance):
         self.mode = "remove"
         self.status_label.text = "Modus: Entfernen (-) | Bereit zum Scannen"
-
-    def update_list_display(self):
-        if not self.products:
-            self.list_label.text = "Dein Bestand ist leer."
-            return
-        
-        display_text = ""
-        for code, count in self.products.items():
-            display_text += f"• Code: {code} | Anzahl: {count}\n"
-        self.list_label.text = display_text
 
 if __name__ == '__main__':
     BarcodeScannerApp().run()
