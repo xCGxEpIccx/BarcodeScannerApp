@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Scanner Pro</title>
-    <script src="https://jsdelivr.net"></script>
+    <!-- Lädt den absolut stabilen und schnellen Google-Empfohlenen Scanner -->
+    <script src="https://unpkg.com"></script>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -14,9 +15,7 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         .btn-login { background: #007bff; color: white; }
-        #interactive.viewport { width: 100%; max-width: 400px; height: 300px; border-radius: 12px; background: #000; margin: 10px auto; overflow: hidden; position: relative; }
-        #interactive.viewport video { width: 100%; height: 100%; object-fit: cover; }
-        canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #reader { width: 100%; max-width: 400px; margin: 10px auto; border-radius: 12px; overflow: hidden; background: #000; border: none !important; }
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 16px; }
     </style>
 </head>
@@ -34,7 +33,8 @@
         <div id="app-screen" style="display: none;">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
-            <div id="interactive" class="viewport"></div>
+            <!-- Der stabile Google-Kamera-Container -->
+            <div id="reader"></div>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
@@ -47,103 +47,54 @@
     <script>
         let mode = "add";
         let products = {};
-        let lastScannedCode = "";
-        let lastScanTime = 0;
+        let html5QrcodeScanner;
 
         function checkPassword() {
             const input = document.getElementById("pw-input").value;
             if (input === "1234") {
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("app-screen").style.display = "block";
-                startBarcodeScanner();
+                startScanner();
             } else {
                 document.getElementById("error-msg").innerText = "Falsches Passwort!";
             }
         }
 
-        function startBarcodeScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#interactive'),
-                    constraints: {
-                        facingMode: "environment",
-                        width: { min: 640, ideal: 1280 },
-                        height: { min: 480, ideal: 720 },
-                        focusMode: "continuous"
-                    },
+        function startScanner() {
+            // Initialisiert den stabilen Scanner direkt über die Hardware-Kamera
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", 
+                { 
+                    fps: 15, 
+                    qrbox: { width: 250, height: 150 }, // Optimaler Fokusbereich für Barcodes
+                    rememberLastUsedCamera: true,
+                    aspectRatio: 1.333334
                 },
-                locator: {
-                    halfSample: false,
-                    patchSize: "large"
-                },
-                decoder: {
-                    readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader"]
-                }
-            }, function(err) {
-                if (err) {
-                    console.log(err);
-                    alert("Kamera-Fehler.");
-                    return;
-                }
-                Quagga.start();
-                
-                setTimeout(() => {
-                    let track = Quagga.CameraAccess.getActiveTrack();
-                    if (track && typeof track.getCapabilities === 'function') {
-                        let capabilities = track.getCapabilities();
-                        if (capabilities.torch) {
-                            track.applyConstraints({ advanced: [{ torch: true }] });
-                        }
-                    }
-                }, 1000);
-            });
+                /* verbose= */ false
+            );
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
 
-            Quagga.onProcessed(function(result) {
-                let drawingCtx = Quagga.canvas.ctx.overlay,
-                    drawingCanvas = Quagga.canvas.dom.overlay;
+        function onScanSuccess(decodedText, decodedResult) {
+            // Sound/Vibration simulieren
+            if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                if (result) {
-                    if (result.boxes) {
-                        drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
-                        result.boxes.filter(function (box) {
-                            return box !== result.box;
-                        }).forEach(function (box) {
-                            Quagga.actions.drawPath(box, {x: 0, y: 1}, drawingCtx, {color: "green", lineWidth: 2});
-                        });
-                    }
-
-                    if (result.box) {
-                        Quagga.actions.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {color: "blue", lineWidth: 2});
-                    }
+            // Logik zum Hinzufügen oder Entfernen
+            if (mode === "add") {
+                products[decodedText] = (products[decodedText] || 0) + 1;
+            } else if (mode === "remove") {
+                if (products[decodedText]) {
+                    products[decodedText] -= 1;
+                    if (products[decodedText] <= 0) delete products[decodedText];
                 }
-            });
+            }
+            
+            updateListDisplay();
+        }
 
-            Quagga.onDetected(function(data) {
-                let code = data.codeResult.code;
-                let now = Date.now();
-                
-                if (code === lastScannedCode && (now - lastScanTime) < 2000) {
-                    return;
-                }
-                
-                lastScannedCode = code;
-                lastScanTime = now;
-                
-                if (window.navigator.vibrate) window.navigator.vibrate(100);
-
-                if (mode === "add") {
-                    products[code] = (products[code] || 0) + 1;
-                } else if (mode === "remove") {
-                    if (products[code]) {
-                        products[code] -= 1;
-                        if (products[code] <= 0) delete products[code];
-                    }
-                }
-                
-                updateListDisplay();
-            });
+        function onScanFailure(error) {
+            // Ignoriert permanente Such-Meldungen im Hintergrund, um Performance zu sparen
         }
 
         function setMode(newMode) {
