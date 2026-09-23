@@ -12,7 +12,6 @@
         button { font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        .btn-login { background: #007bff; color: white; }
         .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin: 5px 0 15px 0; width: 100%; }
         .btn-toggle-date.active { background: #007bff; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
@@ -25,16 +24,8 @@
 </head>
 <body>
     <div class="container">
-        <!-- 1. LOGIN SCREEN -->
-        <div id="login-screen">
-            <h2>Bitte Passwort eingeben:</h2>
-            <input type="password" id="pw-input" placeholder="Passwort">
-            <button class="btn-login" onclick="checkPassword()">Einloggen</button>
-            <p id="error-msg" style="color: red;"></p>
-        </div>
-
-        <!-- 2. APP SCREEN -->
-        <div id="app-screen" style="display: none;">
+        <!-- Haupt-Bildschirm (Startet jetzt sofort ohne Login!) -->
+        <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
             <video id="webcam" autoplay playsinline></video>
@@ -64,20 +55,13 @@
 
         let bestand = {};
 
-        function checkPassword() {
-            const input = document.getElementById("pw-input").value;
-            if (input === "1234") {
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("app-screen").style.display = "block";
-                
-                if ('BarcodeDetector' in window) {
-                    barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
-                }
-                startKamera();
-            } else {
-                document.getElementById("error-msg").innerText = "Falsches Passwort!";
+        // Startet den Barcode-Detector direkt beim Laden der Seite
+        window.addEventListener('load', () => {
+            if ('BarcodeDetector' in window) {
+                barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
-        }
+            startKamera();
+        });
 
         function startKamera() {
             navigator.mediaDevices.getUserMedia({ 
@@ -102,7 +86,6 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        // HIER WAR DER FEHLER: Greift jetzt wieder sauber auf den erkannten Code zu!
                         let code = barcodes[0].rawValue;
                         let now = Date.now();
                         
@@ -222,3 +205,14 @@
                 
                 html += `<div class="product-item">
                             <div class="product-header">
+                                <span>📦 <b>${name}</b> | Gesamt: <b>${gesamtAnzahl} Stk.</b></span>
+                                <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
+                            </div>
+                            ${datenHtml}
+                         </div>`;
+            }
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
