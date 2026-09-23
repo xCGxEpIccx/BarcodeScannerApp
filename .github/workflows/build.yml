@@ -17,51 +17,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
-          pip install --upgrade "pip<24.1"
-          pip install cython buildozer
+          pip install cython
 
-      - name: Auto-Accept Android SDK Licenses
-        run: |
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-      - name: Create Base Configuration
-        run: |
-          buildozer init
-
-      - name: Force Fix Configuration Parameters
-        run: |
-          sed -i 's/requirements = python3,kivy/requirements = python3, kivy/g' buildozer.spec
-          sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
-          sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-          sed -i 's/#android.ndk_path =/android.ndk_path = \/usr\/local\/lib\/android\/sdk\/ndk\/27.3.13750724/g' buildozer.spec
-          
-          # Zwingt python-for-android die stabile Python-Version 3.10 zu nutzen statt der fehlerhaften 3.14!
-          sed -i 's/# p4a.branch = release-2022.12.20/p4a.branch = master/g' buildozer.spec
-          echo "android.python_version = 3.10" >> buildozer.spec
-
-      - name: Build with Buildozer
-        env:
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          USE_HARFBUZZ: "0"
-          USE_SDL2_IMAGE_WEBP: "0"
-          WERROR: "0"
-          CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
-          CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
-        run: |
-          # Der ultimative Trick: Wir starten Buildozer, fangen den Fehler ab und zwingen das System weiter
-          yes | buildozer -v android debug || true
-          
-          # Falls er wegen der virtuellen Umgebung meckert, flicken wir pip intern und finalisieren den Build
-          VENV_PIP=".buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/venv/bin/pip"
-          if [ -f "$VENV_PIP" ]; then
-            echo "Flicke internes Pip..."
-            sed -i 's/from pip._internal.cli.main import main/import sys; from pip._internal.cli.main import main/g' .buildozer/android/platform/build-arm64-v8a_armeabi-v7a/build/venv/lib/python3.14/site-packages/pip/_internal/cli/main.py 2>/dev/null || true
-          fi
-          
-          # Startet den finalen Durchlauf, der nun über die Hürde springt
-          yes | buildozer -v android debug
+      - name: Build Android App with Official Action
+        # Diese offizielle Action nutzt eine feste, stabile Umgebung und verhindert den Pip-Fehler!
+        uses: ArtemGovorov/buildozer-action@v1
+        with:
+          buildozer_version: '1.5.0'
+          command: 'buildozer -v android debug'
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
