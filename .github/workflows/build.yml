@@ -1,69 +1,74 @@
-name: Build Android APK
-on: [push, workflow_dispatch]
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.camera import Camera
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+class BarcodeScannerApp(App):
+    def build(self):
+        self.products = {}
+        self.mode = "add"  # Standardmodus: Hinzufügen
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+        # Hauptlayout
+        main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
-          pip install --upgrade pip
-          pip install cython buildozer
+        # 1. Kamerabild (Nativ über Kivy, ohne OpenCV-Müll!)
+        self.camera = Camera(play=True, resolution=(640, 480))
+        main_layout.add_widget(self.camera)
 
-      - name: Auto-Accept Android SDK Licenses
-        run: |
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          # Installiert die Lizenzen offiziell vorab im System
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        # 2. Status-Anzeige
+        self.status_label = Label(
+            text="Modus: Hinzufügen (+) | Bereit zum Scannen",
+            size_hint_y=None,
+            height=40,
+            color=(0, 1, 0, 1)
+        )
+        main_layout.add_widget(self.status_label)
 
-      - name: Create Custom Buildozer Configuration
-        run: |
-          cat << 'EOF' > buildozer.spec
-          [app]
-          title = BarcodeScanner
-          package.name = barcodescanner
-          package.domain = org.test
-          source.dir = .
-          source.include_exts = py,png,jpg,kv,atlas
-          version = 1.0
-          requirements = python3, kivy, opencv
-          orientation = portrait
-          fullscreen = 0
-          android.permissions = INTERNET, CAMERA
-          android.api = 33
-          android.minapi = 24
-          android.accept_sdk_license = True
-          android.skip_apk_rescale = True
-          p4a.branch = master
-          android.ndk_path = /usr/local/lib/android/sdk/ndk/27.3.13750724
-          
-          [buildozer]
-          log_level = 2
-          warn_on_root = 1
-          EOF
+        # 3. Modus-Buttons
+        btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=10)
+        self.btn_add = Button(text="Hinzufügen (+)", background_color=(0, 0.7, 0, 1))
+        self.btn_add.bind(on_press=self.set_add_mode)
+        
+        self.btn_remove = Button(text="Entfernen (-)", background_color=(0.7, 0, 0, 1))
+        self.btn_remove.bind(on_press=self.set_remove_mode)
+        
+        btn_layout.add_widget(self.btn_add)
+        btn_layout.add_widget(self.btn_remove)
+        main_layout.add_widget(btn_layout)
 
-      - name: Build with Buildozer
-        env:
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          WERROR: "0"
-          CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
-          CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
-        # HIER IST DIE ÄNDERUNG: Das fehleranfällige "yes |" wurde komplett gelöscht!
-        run: buildozer -v android debug
+        # 4. Scrollbare Bestandsliste
+        scroll = ScrollView()
+        self.list_label = Label(
+            text="Dein Bestand ist leer.",
+            size_hint_y=None,
+            halign='left',
+            valign='top'
+        )
+        self.list_label.bind(texture_size=self.list_label.setter('size'))
+        scroll.add_widget(self.list_label)
+        main_layout.add_widget(scroll)
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: bin/*.apk
+        return main_layout
+
+    def set_add_mode(self, instance):
+        self.mode = "add"
+        self.status_label.text = "Modus: Hinzufügen (+) | Bereit zum Scannen"
+
+    def set_remove_mode(self, instance):
+        self.mode = "remove"
+        self.status_label.text = "Modus: Entfernen (-) | Bereit zum Scannen"
+
+    def update_list_display(self):
+        if not self.products:
+            self.list_label.text = "Dein Bestand ist leer."
+            return
+        
+        display_text = ""
+        for code, count in self.products.items():
+            display_text += f"• Code: {code} | Anzahl: {count}\n"
+        self.list_label.text = display_text
+
+if __name__ == '__main__':
+    BarcodeScannerApp().run()
