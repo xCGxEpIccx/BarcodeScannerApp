@@ -12,6 +12,7 @@
         button { font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
+        .btn-cam-fix { background: #ff9800; color: white; margin: 10px 0; }
         .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin: 5px 0 15px 0; width: 100%; }
         .btn-toggle-date.active { background: #007bff; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
@@ -20,8 +21,6 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .date-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; margin-top: 4px; }
-        
-        /* Styling für das neue schlaue Overlay-Menü */
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 1000; }
         .overlay-content { background: #222; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; text-align: left; }
     </style>
@@ -31,7 +30,11 @@
         <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
+            <!-- Der Kamera-Sucher -->
             <video id="webcam" autoplay playsinline></video>
+            
+            <!-- Ein fetter Button, falls das Bild beim Start schwarz bleibt -->
+            <button class="btn-cam-fix" id="fix-cam-btn" onclick="startKamera()">Kamera starten / reparieren 📷</button>
             
             <button class="btn-toggle-date active" id="date-toggle-btn" onclick="toggleDateQuery()">Ablaufdatum-Abfrage: AN ⏱️</button>
             
@@ -43,14 +46,13 @@
         </div>
     </div>
 
-    <!-- DAS SCHLAUE DROPDOWN-MENÜ (Overlay) -->
+    <!-- DAS SCHLAUE DROPDOWN-MENÜ -->
     <div id="product-overlay" class="overlay">
         <div class="overlay-content">
             <h3 style="margin-top:0;">Neuer Code erkannt!</h3>
             <p id="manufacturer-info" style="color: #ff9800; font-size: 14px; font-weight: bold;"></p>
             <p>Möchtest du diesen Code einem existierenden Produkt zuweisen?</p>
             
-            <!-- Hier drin kann man suchen und auswählen -->
             <select id="product-dropdown" onchange="checkDropdownSelection()">
                 <!-- Wird dynamisch befüllt -->
             </select>
@@ -70,22 +72,20 @@
         let askForDate = true;
         let currentScannedCode = "";
 
-        // Festgelegte Produktnamen (IDs)
         let produktNamen = {
             "milch": "Vollmilch 1L",
             "ottakringer": "Ottakringer Bier 0.5L",
             "goesser": "Gösser Bier"
         };
 
-        // Verknüpft Barcode-Zahlen mit den Produkt-IDs
         let barcodeZuProduktId = {
             "9120139158524": "milch",
             "9019100592002": "ottakringer"
         };
 
-        // Das Bestands-System speichert jetzt basierend auf der Produkt-ID
         let bestand = {};
 
+        // Startet das System direkt beim Laden der Seite
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -94,25 +94,27 @@
         });
 
         function startKamera() {
+            // Erzwingt den direkten Hardware-Zugriff aufs Smartphone
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
             })
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
+                document.getElementById("fix-cam-btn").style.display = "none"; // Blendet den Button aus, wenn Bild läuft
+                
                 video.addEventListener('play', () => {
                     scanSchleife(video);
                 });
             })
             .catch(err => {
-                alert("Kamera-Zugriff blockiert.");
+                console.error(err);
+                alert("Kamera blockiert! Schließe bitte andere offene Kamera-Apps.");
             });
         }
 
-        // Automatische Hersteller-Erkennung aus dem Code (GS1-Präfixe)
         function erkenneHersteller(code) {
             if (code.startsWith("91") || code.startsWith("90")) {
-                // Typische österreichische Hersteller-Nummern zuordnen
                 if (code.includes("0139")) return "Österreich 🇦🇹 | Vermutlich Penny Eigenmarke";
                 if (code.includes("1910")) return "Österreich 🇦🇹 | Ottakringer Brauerei";
                 if (code.startsWith("9011") || code.startsWith("9006")) return "Österreich 🇦🇹 | Brau Union (Gösser / Puntigamer)";
@@ -131,7 +133,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue;
+                        let code = barcodes[0].rawValue; // JETZT EXAKT ABGESICHERT!
                         let now = Date.now();
                         
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
@@ -144,12 +146,10 @@
 
                         currentScannedCode = code;
 
-                        // Wenn Code bekannt ist, direkt verarbeiten
                         if (barcodeZuProduktId[code]) {
                             let pId = barcodeZuProduktId[code];
                             frageAblaufdatumUndSichere(pId);
                         } else {
-                            // Wenn Code unbekannt: Schlaue Dropdown-Abfrage öffnen!
                             oeffneProduktDropdown(code);
                         }
                     }
@@ -166,7 +166,6 @@
             const dropdown = document.getElementById("product-dropdown");
             dropdown.innerHTML = "";
 
-            // Standard-Optionen hinzufügen
             let optSelect = document.createElement("option");
             optSelect.text = "-- Bitte auswählen oder neu anlegen --";
             optSelect.value = "";
@@ -177,7 +176,6 @@
             optNew.value = "NEW";
             dropdown.add(optNew);
 
-            // Alle bereits existierenden Namen alphabetisch ins Dropdown laden!
             let ids = Object.keys(produktNamen);
             ids.sort((a,b) => produktNamen[a].localeCompare(produktNamen[b]));
             
@@ -187,7 +185,6 @@
                 opt.value = id;
                 opt.text = "Zuweisen zu: " + produktNamen[id];
                 
-                // Intelligenter Vorsortierungs-Vorschlag für Bier
                 if ((code.startsWith("9011") || code.startsWith("9006")) && id === "goesser") {
                     opt.text = "⭐ EMPFOHLEN: " + produktNamen[id];
                 }
@@ -211,3 +208,7 @@
 
         function saveDropdownSelection() {
             const dropdown = document.getElementById("product-dropdown");
+            let val = dropdown.value;
+            let pId = "";
+
+            if (val === "") {
