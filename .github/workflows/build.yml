@@ -17,7 +17,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
-          pip install --upgrade pip
+          # HIER IST DIE RETTUNG: Wir zwingen pip auf eine stabile Version, die keine internen ImportErrors erzeugt!
+          pip install --upgrade "pip<24.1"
           pip install cython buildozer
 
       - name: Auto-Accept Android SDK Licenses
@@ -32,7 +33,6 @@ jobs:
 
       - name: Force Fix Configuration Parameters
         run: |
-          # Zwingt die Datei per Linux-Befehl, OpenCV wegzulassen und das stabile NDK zu nutzen!
           sed -i 's/requirements = python3,kivy/requirements = python3, kivy/g' buildozer.spec
           sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
           sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
@@ -40,7 +40,6 @@ jobs:
 
       - name: Build with Buildozer
         env:
-          # Systemweiter Zwang auf das stabile NDK 27b und Abschalten aller Grafik-Fehlerquellen!
           ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
           USE_HARFBUZZ: "0"
           USE_SDL2_IMAGE_WEBP: "0"
