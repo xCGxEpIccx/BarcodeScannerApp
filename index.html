@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Scanner Pro</title>
-    <!-- Lädt den superschnellen Barcode-Scanner-Detektiv direkt aus dem Netz -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
@@ -35,7 +34,6 @@
         <div id="app-screen" style="display: none;">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
-            <!-- Der Kamera-Container, in dem Quagga arbeitet -->
             <div id="interactive" class="viewport"></div>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -64,34 +62,70 @@
         }
 
         function startBarcodeScanner() {
-            // Konfiguriert den automatischen Barcode-Erkenner für die Handy-Kamera
             Quagga.init({
                 inputStream: {
                     name: "Live",
                     type: "LiveStream",
                     target: document.querySelector('#interactive'),
                     constraints: {
-                        facingMode: "environment" // Nutzt die Rückkamera des Handys
+                        facingMode: "environment",
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 },
+                        focusMode: "continuous"
                     },
                 },
+                locator: {
+                    // Der Trick: Macht die Erkennung für feine, enge Strichcodes extrem sensibel
+                    halfSample: false,
+                    patchSize: "large"
+                },
                 decoder: {
-                    readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader"] // Erkennt alle Standard-Supermarkt-Barcodes
+                    readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader"]
                 }
             }, function(err) {
                 if (err) {
                     console.log(err);
-                    alert("Kamera-Fehler: Bitte Berechtigung prüfen.");
+                    alert("Kamera-Fehler.");
                     return;
                 }
                 Quagga.start();
+                
+                # Schaltet die Handy-Taschenlampe automatisch für besseren Kontrast hinzu
+                setTimeout(() => {
+                    let track = Quagga.CameraAccess.getActiveTrack();
+                    if (track && typeof track.getCapabilities === 'function') {
+                        let capabilities = track.getCapabilities();
+                        if (capabilities.torch) {
+                            track.applyConstraints({ advanced: [{ torch: true }] });
+                        }
+                    }
+                }, 1000);
             });
 
-            // Diese Funktion feuert vollautomatisch, sobald ein Barcode im Bild erkannt wird!
+            Quagga.onProcessed(function(result) {
+                let drawingCtx = Quagga.canvas.ctx.overlay,
+                    drawingCanvas = Quagga.canvas.dom.overlay;
+
+                if (result) {
+                    if (result.boxes) {
+                        drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
+                        result.boxes.filter(function (box) {
+                            return box !== result.box;
+                        }).forEach(function (box) {
+                            Quagga.actions.drawPath(box, {x: 0, y: 1}, drawingCtx, {color: "green", lineWidth: 2});
+                        });
+                    }
+
+                    if (result.box) {
+                        Quagga.actions.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {color: "blue", lineWidth: 2});
+                    }
+                }
+            });
+
             Quagga.onDetected(function(data) {
                 let code = data.codeResult.code;
                 let now = Date.now();
                 
-                // Verhindert, dass derselbe Barcode innerhalb von 2 Sekunden doppelt gescannt wird
                 if (code === lastScannedCode && (now - lastScanTime) < 2000) {
                     return;
                 }
@@ -99,10 +133,8 @@
                 lastScannedCode = code;
                 lastScanTime = now;
                 
-                // Sound-Effekt (Piepton) simulieren
                 if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                // Logik zum Hinzufügen oder Entfernen
                 if (mode === "add") {
                     products[code] = (products[code] || 0) + 1;
                 } else if (mode === "remove") {
