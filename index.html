@@ -40,7 +40,6 @@
             
             <video id="webcam" autoplay playsinline></video>
             
-            <!-- Der neue Schalter für das Ablaufdatum direkt unter der Kamera -->
             <button class="btn-toggle-date active" id="date-toggle-btn" onclick="toggleDateQuery()">Ablaufdatum-Abfrage: AN ⏱️</button>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -57,9 +56,8 @@
         let lastScanTime = 0;
         let barcodeDetector;
         let isScanningBlock = false;
-        let askForDate = true; // Speichert, ob das Datum aufpoppen soll
+        let askForDate = true;
 
-        // Deine persönliche Produkt-Datenbank
         let produktDatenbank = {
             "9120139158524": "Vollmilch 1L (Penny)",
             "9019100592002": "Ottakringer Bier 0.5L"
@@ -116,7 +114,6 @@
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        // Automatische Erkennung bekannter Produkte, sonst Abfrage
                         if (!produktDatenbank[code]) {
                             let neuerName = prompt("Neues Produkt erkannt! Bitte Namen eingeben:", "Produkt " + code);
                             if (neuerName) {
@@ -126,7 +123,6 @@
                             }
                         }
 
-                        // Ablaufdatum abfragen (nur wenn Modus=Hinzufügen UND der Schalter AN ist)
                         let ablaufdatum = "Kein Datum";
                         if (mode === "add" && askForDate) {
                             let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM) oder leer lassen:", "");
@@ -167,7 +163,6 @@
             updateListDisplay();
         }
 
-        // Funktion für den neuen Ablaufdatum-Schalter unter der Kamera
         function toggleDateQuery() {
             askForDate = !askForDate;
             const btn = document.getElementById("date-toggle-btn");
@@ -180,7 +175,6 @@
             }
         }
 
-        // Funktion für den lila Namensänderungs-Button (N)
         function renameProduct(code) {
             let alterName = produktDatenbank[code] || code;
             let neuerName = prompt("Produktnamen ändern:", alterName);
@@ -219,3 +213,12 @@
                 let datenHtml = "";
                 let daten = Object.keys(bestand[code]);
                 
+                for (let j = 0; j < daten.length; j++) {
+                    let d = daten[j];
+                    let anz = bestand[code][d];
+                    gesamtAnzahl += anz;
+                    datenHtml += `<div class="date-item">↳ ${d}: <b>${anz} Stk.</b></div>`;
+                }
+                
+                html += `<div class="product-item">
+                            <div class="product-header">
