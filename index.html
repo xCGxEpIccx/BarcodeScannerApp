@@ -75,7 +75,6 @@
                     },
                 },
                 locator: {
-                    // Der Trick: Macht die Erkennung für feine, enge Strichcodes extrem sensibel
                     halfSample: false,
                     patchSize: "large"
                 },
@@ -90,7 +89,6 @@
                 }
                 Quagga.start();
                 
-                # Schaltet die Handy-Taschenlampe automatisch für besseren Kontrast hinzu
                 setTimeout(() => {
                     let track = Quagga.CameraAccess.getActiveTrack();
                     if (track && typeof track.getCapabilities === 'function') {
