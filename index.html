@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner Pro</title>
-    <!-- Offizielle, stabile Version der Scan-Engine -->
-    <script src="https://cloudflare.com"></script>
+    <title>Barcode Scanner</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -15,19 +13,11 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         .btn-login { background: #007bff; color: white; }
-        .btn-cam { background: #ff9800; color: white; margin-top: 10px; }
-        #reader { width: 100%; max-width: 400px; margin: 15px auto; border-radius: 12px; overflow: hidden; background: #222; border: 2px dashed #444; min-height: 250px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 16px; }
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; }
     </style>
 </head>
 <body>
-    <script>
-        // Der Sicherheits-Zwang: Schaltet den Browser automatisch auf verschlüsseltes HTTPS um!
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            location.replace(`https:${location.href.substring(location.protocol.length)}`);
-        }
-    </script>
-
     <div class="container">
         <!-- 1. LOGIN SCREEN -->
         <div id="login-screen">
@@ -39,12 +29,10 @@
 
         <!-- 2. APP SCREEN -->
         <div id="app-screen" style="display: none;">
-            <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
+            <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit</h3>
             
-            <!-- Der Kamera-Container -->
-            <div id="reader"></div>
-            
-            <button class="btn-cam" id="start-btn" onclick="aktivierenKamera()">Kamera aktivieren 📷</button>
+            <!-- Das funktionierende Kamera-Fenster von ganz am Anfang! -->
+            <video id="webcam" autoplay playsinline></video>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
@@ -57,89 +45,43 @@
     <script>
         let mode = "add";
         let products = {};
-        let html5QrCode;
 
         function checkPassword() {
             const input = document.getElementById("pw-input").value;
             if (input === "1234") {
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("app-screen").style.display = "block";
+                startKamera();
             } else {
                 document.getElementById("error-msg").innerText = "Falsches Passwort!";
             }
         }
 
-        function aktivierenKamera() {
-            // Erstschritt: Wir triggern die offizielle Android-Kamera-Abfrage DIREKT über den Browser-Kern
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then((stream) => {
-                // Berechtigung erteilt! Jetzt stoppen wir den Test-Stream kurz...
-                stream.getTracks().forEach(track => track.stop());
-                
-                // ...und übergeben die Linse sofort an die Scan-Engine
-                html5QrCode = new Html5Qrcode("reader");
-                return html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    { fps: 10, qrbox: { width: 280, height: 160 } },
-                    onScanSuccess,
-                    onScanFailure
-                );
+        function startKamera() {
+            // Genau der Code, der die Handy-Kamera vorhin sofort geöffnet hat
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "environment" // Erzwingt die Rückkamera
+                } 
             })
-            .then(() => {
-                document.getElementById("start-btn").style.display = "none";
-                document.getElementById("reader").style.border = "none";
+            .then(stream => {
+                document.getElementById("webcam").srcObject = stream;
             })
-            .catch((err) => {
+            .catch(err => {
                 console.error(err);
-                alert("Kamera konnte nicht gestartet werden. Bitte prüfe die Chrome-App-Berechtigungen.");
+                alert("Kamera-Zugriff konnte nicht gestartet werden.");
             });
-        }
-
-        function onScanSuccess(decodedText, decodedResult) {
-            if (window.navigator.vibrate) window.navigator.vibrate(100);
-
-            if (mode === "add") {
-                products[decodedText] = (products[decodedText] || 0) + 1;
-            } else if (mode === "remove") {
-                if (products[decodedText]) {
-                    products[decodedText] -= 1;
-                    if (products[decodedText] <= 0) delete products[decodedText];
-                }
-            }
-            
-            updateListDisplay();
-        }
-
-        function onScanFailure(error) {
-            // Sucht im Hintergrund kontinuierlich weiter
         }
 
         function setMode(newMode) {
             mode = newMode;
             if(mode === "add") {
-                document.getElementById("status-label").innerText = "Modus: Hinzufügen (+) | Bereit zum Scannen";
+                document.getElementById("status-label").innerText = "Modus: Hinzufügen (+) | Bereit";
                 document.getElementById("status-label").style.color = "#00b300";
             } else {
-                document.getElementById("status-label").innerText = "Modus: Entfernen (-) | Bereit zum Scannen";
+                document.getElementById("status-label").innerText = "Modus: Entfernen (-) | Bereit";
                 document.getElementById("status-label").style.color = "#d90000";
             }
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let keys = Object.keys(products);
-            
-            if (keys.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                return;
-            }
-            
-            let html = "";
-            for (let i = 0; i < keys.length; i++) {
-                let code = keys[i];
-                html += "• <b>" + code + "</b> | Anzahl: " + products[code] + "<br>";
-            }
-            listDiv.innerHTML = html;
         }
     </script>
 </body>
