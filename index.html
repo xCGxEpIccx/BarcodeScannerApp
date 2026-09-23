@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barcode Scanner Pro</title>
-    <!-- Stabile Version der Google-empfohlenen Scan-Engine -->
+    <!-- Offizielle, stabile Version der Scan-Engine -->
     <script src="https://cloudflare.com"></script>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
@@ -41,6 +41,7 @@
         <div id="app-screen" style="display: none;">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
+            <!-- Der Kamera-Container -->
             <div id="reader"></div>
             
             <button class="btn-cam" id="start-btn" onclick="aktivierenKamera()">Kamera aktivieren 📷</button>
@@ -63,30 +64,34 @@
             if (input === "1234") {
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("app-screen").style.display = "block";
-                html5QrCode = new Html5Qrcode("reader");
             } else {
                 document.getElementById("error-msg").innerText = "Falsches Passwort!";
             }
         }
 
         function aktivierenKamera() {
-            // Startet die Rückkamera mit optimaler Schärfe für Barcodes
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                {
-                    fps: 10,    
-                    qrbox: { width: 280, height: 160 }
-                },
-                onScanSuccess,
-                onScanFailure
-            )
+            // Erstschritt: Wir triggern die offizielle Android-Kamera-Abfrage DIREKT über den Browser-Kern
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then((stream) => {
+                // Berechtigung erteilt! Jetzt stoppen wir den Test-Stream kurz...
+                stream.getTracks().forEach(track => track.stop());
+                
+                // ...und übergeben die Linse sofort an die Scan-Engine
+                html5QrCode = new Html5Qrcode("reader");
+                return html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    { fps: 10, qrbox: { width: 280, height: 160 } },
+                    onScanSuccess,
+                    onScanFailure
+                );
+            })
             .then(() => {
                 document.getElementById("start-btn").style.display = "none";
                 document.getElementById("reader").style.border = "none";
             })
             .catch((err) => {
                 console.error(err);
-                alert("Kamera-Fehler: Bitte erlaube den Webseiten-Zugriff in den Handy-Berechtigungen.");
+                alert("Kamera konnte nicht gestartet werden. Bitte prüfe die Chrome-App-Berechtigungen.");
             });
         }
 
