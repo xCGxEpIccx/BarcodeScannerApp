@@ -3,41 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner App</title>
-    <!-- Lädt das offizielle Kivy-Web-System -->
-    <script src="https://iodide.io"></script>
+    <title>Barcode Scanner</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #121212; color: white; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
-        #loading { font-size: 20px; }
+        body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        input, button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; }
+        input { background: #222; color: white; text-align: center; }
+        button { font-weight: bold; cursor: pointer; }
+        .btn-add { background: #00b300; color: white; }
+        .btn-remove { background: #d90000; color: white; }
+        .btn-login { background: #007bff; color: white; }
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; }
     </style>
 </head>
 <body>
-    <div id="loading">App wird geladen... Bitte warten...</div>
-    <div id="kivy-container" style="width: 100%; height: 100%; display: none;"></div>
+    <div class="container">
+        <!-- 1. LOGIN SCREEN -->
+        <div id="login-screen">
+            <h2>Bitte Passwort eingeben:</h2>
+            <input type="password" id="pw-input" placeholder="Passwort">
+            <button class="btn-login" onclick="checkPassword()">Einloggen</button>
+            <p id="error-msg" style="color: red;"></p>
+        </div>
+
+        <!-- 2. APP SCREEN (Zuerst versteckt) -->
+        <div id="app-screen" style="display: none;">
+            <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit</h3>
+            
+            <!-- Die echte Handy-Kamera direkt im Browser! -->
+            <video id="webcam" autoplay playsinline></video>
+            
+            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+            
+            <h3>Dein Bestand:</h3>
+            <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+        </div>
+    </div>
 
     <script>
-        async function startApp() {
-            // Startet die Python-Umgebung im Browser
-            let pyodide = await loadPyodide();
-            await pyodide.loadPackage(["micropip"]);
-            
-            // Holt sich deine main.py aus dem GitHub-Ordner
-            let response = await fetch('main.py');
-            let code = await response.text();
-            
-            // Installiert Kivy intern im Browser-Zwischenspeicher
-            await pyodide.runPythonAsync(`
-                import micropip
-                await micropip.install('kivy')
-            `);
-            
-            // Blendet den Lade-Text aus und startet das Python-Skript
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('kivy-container').style.display = 'block';
-            
-            await pyodide.runPythonAsync(code);
+        let mode = "add";
+        let products = {};
+
+        function checkPassword() {
+            const input = document.getElementById("pw-input").value;
+            // HIER DEIN PASSWORT:
+            if (input === "1234") {
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("app-screen").style.display = "block";
+                startKamera();
+            } else {
+                document.getElementById("error-msg").innerText = "Falsches Passwort!";
+            }
         }
-        startApp();
+
+        function startKamera() {
+            // Aktiviert die echte Handy-Kamera ohne OpenCV/Kivy-Müll
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(stream => {
+                    document.getElementById("webcam").srcObject = stream;
+                })
+                .catch(err => {
+                    alert("Kamera-Zugriff verweigert oder nicht gefunden.");
+                });
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            if(mode === "add") {
+                document.getElementById("status-label").innerText = "Modus: Hinzufügen (+) | Bereit";
+                document.getElementById("status-label").style.color = "#00b300";
+            } else {
+                document.getElementById("status-label").innerText = "Modus: Entfernen (-) | Bereit";
+                document.getElementById("status-label").style.color = "#d90000";
+            }
+        }
     </script>
 </body>
 </html>
