@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner App</title>
+    <!-- Lädt das offizielle Kivy-Web-System -->
+    <script src="https://iodide.io"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #121212; color: white; display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
+        #loading { font-size: 20px; }
+    </style>
+</head>
+<body>
+    <div id="loading">App wird geladen... Bitte warten...</div>
+    <div id="kivy-container" style="width: 100%; height: 100%; display: none;"></div>
+
+    <script>
+        async function startApp() {
+            // Startet die Python-Umgebung im Browser
+            let pyodide = await loadPyodide();
+            await pyodide.loadPackage(["micropip"]);
+            
+            // Holt sich deine main.py aus dem GitHub-Ordner
+            let response = await fetch('main.py');
+            let code = await response.text();
+            
+            // Installiert Kivy intern im Browser-Zwischenspeicher
+            await pyodide.runPythonAsync(`
+                import micropip
+                await micropip.install('kivy')
+            `);
+            
+            // Blendet den Lade-Text aus und startet das Python-Skript
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('kivy-container').style.display = 'block';
+            
+            await pyodide.runPythonAsync(code);
+        }
+        startApp();
+    </script>
+</body>
+</html>
