@@ -12,7 +12,6 @@
         button { font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        .btn-cam-fix { background: #ff9800; color: white; margin: 10px 0; }
         .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin: 5px 0 15px 0; width: 100%; }
         .btn-toggle-date.active { background: #007bff; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
@@ -30,11 +29,8 @@
         <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
-            <!-- Der Kamera-Sucher -->
+            <!-- Der funktionierende Original-Sucher -->
             <video id="webcam" autoplay playsinline></video>
-            
-            <!-- Ein fetter Button, falls das Bild beim Start schwarz bleibt -->
-            <button class="btn-cam-fix" id="fix-cam-btn" onclick="startKamera()">Kamera starten / reparieren 📷</button>
             
             <button class="btn-toggle-date active" id="date-toggle-btn" onclick="toggleDateQuery()">Ablaufdatum-Abfrage: AN ⏱️</button>
             
@@ -46,7 +42,7 @@
         </div>
     </div>
 
-    <!-- DAS SCHLAUE DROPDOWN-MENÜ -->
+    <!-- DROPDOWN-MENÜ -->
     <div id="product-overlay" class="overlay">
         <div class="overlay-content">
             <h3 style="margin-top:0;">Neuer Code erkannt!</h3>
@@ -85,7 +81,7 @@
 
         let bestand = {};
 
-        // Startet das System direkt beim Laden der Seite
+        // Hier wird die Kamera wieder absolut direkt beim Laden gestartet!
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -94,22 +90,18 @@
         });
 
         function startKamera() {
-            // Erzwingt den direkten Hardware-Zugriff aufs Smartphone
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
             })
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
-                document.getElementById("fix-cam-btn").style.display = "none"; // Blendet den Button aus, wenn Bild läuft
-                
                 video.addEventListener('play', () => {
                     scanSchleife(video);
                 });
             })
             .catch(err => {
-                console.error(err);
-                alert("Kamera blockiert! Schließe bitte andere offene Kamera-Apps.");
+                alert("Kamera blockiert.");
             });
         }
 
@@ -133,7 +125,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue; // JETZT EXAKT ABGESICHERT!
+                        let code = barcodes[0].rawValue; // Holte sich exakt das erste gelesene Ergebnis
                         let now = Date.now();
                         
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
@@ -143,7 +135,6 @@
                         isScanningBlock = true;
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
-
                         currentScannedCode = code;
 
                         if (barcodeZuProduktId[code]) {
@@ -212,3 +203,18 @@
             let pId = "";
 
             if (val === "") {
+                alert("Bitte wähle eine Option aus!");
+                return;
+            }
+
+            if (val === "NEW") {
+                let neuerName = document.getElementById("new-product-name").value;
+                if (!neuerName) neuerName = "Produkt " + currentScannedCode;
+                
+                pId = "id_" + Date.now();
+                produktNamen[pId] = neuerName;
+            } else {
+                pId = val;
+            }
+
+            barcodeZuProduktId[currentScannedCode] = pId;
