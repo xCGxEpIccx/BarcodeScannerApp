@@ -7,8 +7,8 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        input, button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; }
-        input { background: #222; color: white; text-align: center; }
+        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; }
+        input, select { background: #222; color: white; text-align: center; }
         button { font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
@@ -20,11 +20,14 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .date-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; margin-top: 4px; }
+        
+        /* Styling für das neue schlaue Overlay-Menü */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 1000; }
+        .overlay-content { background: #222; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; text-align: left; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Haupt-Bildschirm (Startet jetzt sofort ohne Login!) -->
         <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
             
@@ -40,6 +43,24 @@
         </div>
     </div>
 
+    <!-- DAS SCHLAUE DROPDOWN-MENÜ (Overlay) -->
+    <div id="product-overlay" class="overlay">
+        <div class="overlay-content">
+            <h3 style="margin-top:0;">Neuer Code erkannt!</h3>
+            <p id="manufacturer-info" style="color: #ff9800; font-size: 14px; font-weight: bold;"></p>
+            <p>Möchtest du diesen Code einem existierenden Produkt zuweisen?</p>
+            
+            <!-- Hier drin kann man suchen und auswählen -->
+            <select id="product-dropdown" onchange="checkDropdownSelection()">
+                <!-- Wird dynamisch befüllt -->
+            </select>
+            
+            <input type="text" id="new-product-name" placeholder="Neuer Produktname (falls nicht in Liste)" style="display:none;">
+            
+            <button class="btn-add" onclick="saveDropdownSelection()">Bestätigen & Speichern</button>
+        </div>
+    </div>
+
     <script>
         let mode = "add";
         let lastScannedCode = "";
@@ -47,15 +68,24 @@
         let barcodeDetector;
         let isScanningBlock = false;
         let askForDate = true;
+        let currentScannedCode = "";
 
-        let produktDatenbank = {
-            "9120139158524": "Vollmilch 1L (Penny)",
-            "9019100592002": "Ottakringer Bier 0.5L"
+        // Festgelegte Produktnamen (IDs)
+        let produktNamen = {
+            "milch": "Vollmilch 1L",
+            "ottakringer": "Ottakringer Bier 0.5L",
+            "goesser": "Gösser Bier"
         };
 
+        // Verknüpft Barcode-Zahlen mit den Produkt-IDs
+        let barcodeZuProduktId = {
+            "9120139158524": "milch",
+            "9019100592002": "ottakringer"
+        };
+
+        // Das Bestands-System speichert jetzt basierend auf der Produkt-ID
         let bestand = {};
 
-        // Startet den Barcode-Detector direkt beim Laden der Seite
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -79,6 +109,21 @@
             });
         }
 
+        // Automatische Hersteller-Erkennung aus dem Code (GS1-Präfixe)
+        function erkenneHersteller(code) {
+            if (code.startsWith("91") || code.startsWith("90")) {
+                // Typische österreichische Hersteller-Nummern zuordnen
+                if (code.includes("0139")) return "Österreich 🇦🇹 | Vermutlich Penny Eigenmarke";
+                if (code.includes("1910")) return "Österreich 🇦🇹 | Ottakringer Brauerei";
+                if (code.startsWith("9011") || code.startsWith("9006")) return "Österreich 🇦🇹 | Brau Union (Gösser / Puntigamer)";
+                return "Hersteller aus Österreich 🇦🇹";
+            }
+            if (code.startsWith("40") || code.startsWith("41") || code.startsWith("42") || code.startsWith("43") || code.startsWith("44")) {
+                return "Hersteller aus Deutschland 🇩🇪";
+            }
+            return "Unbekannter Hersteller / Ausland";
+        }
+
         function scanSchleife(video) {
             setInterval(async () => {
                 if (!barcodeDetector || video.paused || video.ended || isScanningBlock) return;
@@ -97,24 +142,16 @@
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        if (!produktDatenbank[code]) {
-                            let neuerName = prompt("Neues Produkt erkannt! Bitte Namen eingeben:", "Produkt " + code);
-                            if (neuerName) {
-                                produktDatenbank[code] = neuerName;
-                            } else {
-                                produktDatenbank[code] = "Unbekannt (" + code + ")";
-                            }
-                        }
+                        currentScannedCode = code;
 
-                        let ablaufdatum = "Kein Datum";
-                        if (mode === "add" && askForDate) {
-                            let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM) oder leer lassen:", "");
-                            if (datumInput) ablaufdatum = datumInput;
+                        // Wenn Code bekannt ist, direkt verarbeiten
+                        if (barcodeZuProduktId[code]) {
+                            let pId = barcodeZuProduktId[code];
+                            frageAblaufdatumUndSichere(pId);
+                        } else {
+                            // Wenn Code unbekannt: Schlaue Dropdown-Abfrage öffnen!
+                            oeffneProduktDropdown(code);
                         }
-
-                        verarbeiteBestand(code, ablaufdatum);
-                        
-                        setTimeout(() => { isScanningBlock = false; }, 2000);
                     }
                 } catch (e) {
                     console.error(e);
@@ -122,97 +159,55 @@
             }, 250);
         }
 
-        function verarbeiteBestand(code, datum) {
-            if (!bestand[code]) {
-                bestand[code] = {};
-            }
+        function oeffneProduktDropdown(code) {
+            const infoText = document.getElementById("manufacturer-info");
+            infoText.innerText = "🔍 " + erkenneHersteller(code) + " (Code: " + code + ")";
 
-            if (mode === "add") {
-                bestand[code][datum] = (bestand[code][datum] || 0) + 1;
-            } else if (mode === "remove") {
-                let daten = Object.keys(bestand[code]);
-                if (daten.length > 0) {
-                    let zielDatum = daten[0];
-                    if (daten.length > 1) {
-                        let auswahl = prompt("Welches Ablaufdatum entfernen? Verfügbar:\n" + daten.join("\n"), daten[0]);
-                        if (bestand[code][auswahl]) zielDatum = auswahl;
-                    }
-                    bestand[code][zielDatum] -= 1;
-                    if (bestand[code][zielDatum] <= 0) delete bestand[code][zielDatum];
-                }
-                if (Object.keys(bestand[code]).length === 0) delete bestand[code];
-            }
+            const dropdown = document.getElementById("product-dropdown");
+            dropdown.innerHTML = "";
 
-            updateListDisplay();
-        }
+            // Standard-Optionen hinzufügen
+            let optSelect = document.createElement("option");
+            optSelect.text = "-- Bitte auswählen oder neu anlegen --";
+            optSelect.value = "";
+            dropdown.add(optSelect);
 
-        function toggleDateQuery() {
-            askForDate = !askForDate;
-            const btn = document.getElementById("date-toggle-btn");
-            if (askForDate) {
-                btn.innerText = "Ablaufdatum-Abfrage: AN ⏱️";
-                btn.classList.add("active");
-            } else {
-                btn.innerText = "Ablaufdatum-Abfrage: AUS ❌";
-                btn.classList.remove("active");
-            }
-        }
+            let optNew = document.createElement("option");
+            optNew.text = "🆕 ALS NEUES PRODUKT ANLEGEN...";
+            optNew.value = "NEW";
+            dropdown.add(optNew);
 
-        function renameProduct(code) {
-            let alterName = produktDatenbank[code] || code;
-            let neuerName = prompt("Produktnamen ändern:", alterName);
-            if (neuerName) {
-                produktDatenbank[code] = neuerName;
-                updateListDisplay();
-            }
-        }
-
-        function setMode(newMode) {
-            mode = newMode;
-            if(mode === "add") {
-                document.getElementById("status-label").innerText = "Modus: Hinzufügen (+) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#00b300";
-            } else {
-                document.getElementById("status-label").innerText = "Modus: Entfernen (-) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#d90000";
-            }
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let produktCodes = Object.keys(bestand);
+            // Alle bereits existierenden Namen alphabetisch ins Dropdown laden!
+            let ids = Object.keys(produktNamen);
+            ids.sort((a,b) => produktNamen[a].localeCompare(produktNamen[b]));
             
-            if (produktCodes.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                return;
-            }
-            
-            let html = "";
-            for (let i = 0; i < produktCodes.length; i++) {
-                let code = produktCodes[i];
-                let name = produktDatenbank[code] || code;
+            for (let i = 0; i < ids.length; i++) {
+                let id = ids[i];
+                let opt = document.createElement("option");
+                opt.value = id;
+                opt.text = "Zuweisen zu: " + produktNamen[id];
                 
-                let gesamtAnzahl = 0;
-                let datenHtml = "";
-                let daten = Object.keys(bestand[code]);
-                
-                for (let j = 0; j < daten.length; j++) {
-                    let d = daten[j];
-                    let anz = bestand[code][d];
-                    gesamtAnzahl += anz;
-                    datenHtml += `<div class="date-item">↳ ${d}: <b>${anz} Stk.</b></div>`;
+                // Intelligenter Vorsortierungs-Vorschlag für Bier
+                if ((code.startsWith("9011") || code.startsWith("9006")) && id === "goesser") {
+                    opt.text = "⭐ EMPFOHLEN: " + produktNamen[id];
                 }
-                
-                html += `<div class="product-item">
-                            <div class="product-header">
-                                <span>📦 <b>${name}</b> | Gesamt: <b>${gesamtAnzahl} Stk.</b></span>
-                                <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
-                            </div>
-                            ${datenHtml}
-                         </div>`;
+                dropdown.add(opt);
             }
-            listDiv.innerHTML = html;
+
+            document.getElementById("new-product-name").style.display = "none";
+            document.getElementById("product-overlay").style.display = "flex";
         }
-    </script>
-</body>
-</html>
+
+        function checkDropdownSelection() {
+            const selectValue = document.getElementById("product-dropdown").value;
+            const nameInput = document.getElementById("new-product-name");
+            if (selectValue === "NEW") {
+                nameInput.style.display = "block";
+                nameInput.value = "";
+            } else {
+                nameInput.style.display = "none";
+            }
+        }
+
+        function saveDropdownSelection() {
+            const dropdown = document.getElementById("product-dropdown");
