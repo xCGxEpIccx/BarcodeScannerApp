@@ -17,14 +17,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libncursesw5-dev libsqlite3-dev lld
-          pip install cython
+          # Nutzt eine ältere Pip-Version, um den internen ImportError komplett zu umgehen
+          pip install --upgrade "pip<24.1"
+          pip install cython buildozer==1.5.0
 
-      - name: Build Android App with Official Action
-        # Diese offizielle Action nutzt eine feste, stabile Umgebung und verhindert den Pip-Fehler!
-        uses: ArtemGovorov/buildozer-action@v1
-        with:
-          buildozer_version: '1.5.0'
-          command: 'buildozer -v android debug'
+      - name: Auto-Accept Android SDK Licenses
+        run: |
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Create Base Configuration
+        run: |
+          buildozer init
+
+      - name: Force Fix Configuration Parameters
+        run: |
+          # Schreibt die Einstellungen sauber um und sperrt das fehlerhafte Python 3.14 aus
+          sed -i 's/requirements = python3,kivy/requirements = python3, kivy/g' buildozer.spec
+          sed -i 's/#android.permissions = CAMERA/android.permissions = INTERNET, CAMERA/g' buildozer.spec
+          sed -i 's/#android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+          sed -i 's/#android.ndk_path =/android.ndk_path = \/usr\/local\/lib\/android\/sdk\/ndk\/27.3.13750724/g' buildozer.spec
+          echo "p4a.branch = master" >> buildozer.spec
+
+      - name: Build with Buildozer
+        env:
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          WERROR: "0"
+          CFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
+          CXXFLAGS: "-Wno-error -Wno-format-security -Wno-macro-redefined"
+        run: yes | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
