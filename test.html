@@ -7,31 +7,14 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; font-weight: bold; }
-        input, select { background: #222; color: white; text-align: center; }
-        button { cursor: pointer; }
+        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        
-        .cam-game-container { display: flex; gap: 10px; margin-top: 5px; }
-        .btn-cam-restart { flex: 1; background: #ff9800; color: white; margin: 0; padding: 12px 5px; }
-        .btn-game-mode { flex: 2; background: #555; color: white; margin: 0; padding: 12px 5px; }
-        .btn-game-mode.active { background: #007bff; }
-        
-        .search-container { position: relative; margin: 15px 0 5px 0; }
-        .search-input { text-align: left; padding-left: 45px; background: #222; color: white; border: 1px solid #444; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; }
-        
-        .sort-container { display: flex; gap: 8px; margin-bottom: 10px; }
-        .btn-sort { flex: 1; padding: 10px 5px; font-size: 13px; background: #333; color: #ccc; margin: 0; }
-        .btn-sort.active { background: #8a2be2; color: white; }
-        
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; max-height: 350px; overflow-y: auto; font-size: 16px; }
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
-        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
     </style>
 </head>
 <body>
@@ -39,58 +22,33 @@
         <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
             
+            <!-- Der stabile, originale Kamerasucher -->
             <video id="webcam" autoplay playsinline></video>
-            
-            <div class="cam-game-container">
-                <button class="btn-cam-restart" onclick="startKamera()">📷</button>
-                <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
-            </div>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
             
-            <div class="section-title">📦 Bestand</div>
-            
-            <div class="search-container">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="search-box" class="search-input" placeholder="Bestand durchsuchen..." oninput="updateListDisplay()">
-            </div>
-            
-            <div class="sort-container">
-                <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
-                <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
-                <button class="btn-sort" id="sort-loc" onclick="setSort('location')">Lagerort 📍</button>
-            </div>
-            
+            <h3>Dein Test-Bestand:</h3>
             <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
         </div>
     </div>
 
     <script>
         let mode = "add";
-        let currentSort = "name"; 
-        let sortDirection = 1; 
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
-        let gameModeActive = false;
-        let streakCount = 0;
-        let lastStreakTime = 0;
-
+        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
+                startKamera();
+            } else {
+                alert("Bitte nutze Google Chrome auf Android.");
             }
-            
-            const video = document.getElementById("webcam");
-            video.addEventListener('play', () => {
-                scanSchleife(video);
-            });
-
-            startKamera();
             updateListDisplay();
         });
 
@@ -101,70 +59,14 @@
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
+                video.addEventListener('play', () => {
+                    scanSchleife(video);
+                });
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera blockiert.");
+                alert("Kamera-Zugriff blockiert.");
             });
-        }
-
-        function toggleGameMode() {
-            gameModeActive = !gameModeActive;
-            const btn = document.getElementById("game-mode-btn");
-            if (gameModeActive) {
-                btn.innerText = "🎮 Game Mode: AN";
-                btn.classList.add("active");
-                speakCombatArms("Game Mode Activated");
-            } else {
-                btn.innerText = "🎮 Game Mode: AUS";
-                btn.classList.remove("active");
-                streakCount = 0;
-            }
-        }
-
-        function speakCombatArms(text) {
-            try {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel(); 
-                    let utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US'; 
-                    utterance.pitch = 0.4;    
-                    utterance.rate = 0.85;    
-                    window.speechSynthesis.speak(utterance);
-                }
-            } catch (e) {
-                console.error("Sprachfehler:", e);
-            }
-        }
-
-        function playScanSound(isRemoval) {
-            try {
-                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let oscillator = audioCtx.createOscillator();
-                let gainNode = audioCtx.createGain();
-                
-                oscillator.type = 'sine';
-                
-                if (isRemoval) {
-                    oscillator.frequency.setValueAtTime(450, audioCtx.currentTime); 
-                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.25);
-                } else {
-                    oscillator.frequency.setValueAtTime(1150, audioCtx.currentTime); 
-                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.12);
-                }
-            } catch (e) {
-                console.error("Audio-Fehler:", e);
-            }
         }
 
         function scanSchleife(video) {
@@ -174,7 +76,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // REPARIERT: Hier steht jetzt die Null mit den eckigen Klammern felsenfest drin!
+                        // DIE EINZIG WAHRE ZEILE: Holt sich den Code felsenfest aus der Liste!
                         let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
@@ -185,25 +87,72 @@
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        if (gameModeActive && mode === "add") {
-                            if (now - lastStreakTime < 10000) {
-                                streakCount++;
+                        if (mode === "add") {
+                            if (!products[code]) {
+                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
-                                streakCount = 1; 
+                                products[code].anzahl += 1;
                             }
-                            lastStreakTime = now;
+                        } else if (mode === "remove") {
+                            if (products[code]) {
+                                products[code].anzahl -= 1;
+                                if (products[code].anzahl <= 0) delete products[code];
+                            }
+                        }
+                        
+                        localStorage.setItem('testProducts', JSON.stringify(products));
+                        updateListDisplay();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 200);
+        }
 
-                            if (streakCount === 1) {
-                                playScanSound(false); 
-                            } else if (streakCount === 2) {
-                                speakCombatArms("Double Kill");
-                            } else if (streakCount === 3) {
-                                speakCombatArms("Multi Kill");
-                            } else if (streakCount === 4) {
-                                speakCombatArms("Ultra Kill");
-                            } else if (streakCount === 5) {
-                                speakCombatArms("Fantastic");
-                            } else if (streakCount >= 6) {
-                                speakCombatArms("Unbelievable");
-                            }
-                        } else {
+        function renameProduct(code) {
+            let item = products[code];
+            let neuerName = prompt("Produkt-Infos eingeben (Name - Datum - Ort):", item.fullName || code);
+            if (neuerName) {
+                item.fullName = neuerName;
+                localStorage.setItem('testProducts', JSON.stringify(products));
+                updateListDisplay();
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            if(mode === "add") {
+                document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#00b300";
+            } else {
+                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#d90000";
+            }
+        }
+
+        function updateListDisplay() {
+            const listDiv = document.getElementById("bestand-liste");
+            let keys = Object.keys(products);
+            
+            if (keys.length === 0) {
+                listDiv.innerHTML = "Dein Bestand ist leer.";
+                return;
+            }
+            
+            let html = "";
+            for (let i = 0; i < keys.length; i++) {
+                let code = keys[i];
+                let item = products[code];
+                
+                html += `<div class="product-item">
+                            <div class="product-header">
+                                <span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span>
+                                <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
+                            </div>
+                         </div>`;
+            }
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
