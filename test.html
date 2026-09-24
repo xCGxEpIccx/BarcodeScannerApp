@@ -7,45 +7,55 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; font-weight: bold; }
+        input, select { background: #222; color: white; text-align: center; }
+        button { cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 16px; }
-        .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .product-header { display: flex; justify-content: space-between; align-items: center; }
-        .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         
-        /* Advanced Settings Panel */
-        .btn-advanced-toggle { background: #333; color: #aaa; font-size: 14px; padding: 10px; margin-top: 20px; }
-        .advanced-panel { display: none; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px dashed #444; margin-top: 10px; text-align: left; }
+        /* Der neue fette Kamera-Startknopf */
+        .btn-start-scanner { background: #ff9800; color: white; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         
-        .search-container { position: relative; margin: 10px 0; }
-        .search-input { width: 100%; padding: 12px 12px 12px 40px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        .search-container { position: relative; margin: 15px 0 5px 0; }
+        .search-input { width: 100%; padding: 12px 12px 12px 40px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 15px; text-align: left; }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+        
         .sort-container { display: flex; gap: 5px; margin: 10px 0; }
         .btn-sort { flex: 1; padding: 8px 2px; font-size: 11px; background: #2a2a2a; color: #bbb; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
+        
         .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 10px; margin-top: 10px; width: 100%; }
         .btn-game-mode.active { background: #007bff; }
+        
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; display: none; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 16px; }
+        .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .product-header { display: flex; justify-content: space-between; align-items: center; }
+        .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
+        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        .advanced-panel { background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px dashed #444; margin-top: 20px; text-align: left; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
+        <h3 id="status-label" style="color: #ff9800;">Scanner im Standby | Bitte starten</h3>
         
+        <!-- Der neue Start-Button, der die Kamera erst bei Klick zündet -->
+        <button id="start-btn" class="btn-start-scanner" onclick="initSystem()">Kamera & Scanner starten 📷</button>
+        
+        <!-- Das Videobild ist am Anfang unsichtbar -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
         <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
         
-        <h3>📦 Bestand</h3>
+        <div class="section-title">📦 Bestand</div>
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- Advanced Toggle -->
-        <button class="btn-advanced-toggle" onclick="toggleAdvancedPanel()">⚙️ Erweiterte Einstellungen (Advanced)</button>
-        
-        <div id="advanced-panel" class="advanced-panel">
+        <!-- Die erweiterten Funktionen direkt auf der Seite -->
+        <div class="advanced-panel">
             <h4 style="margin: 0 0 10px 0; color: #ff9800; text-align: center;">Zusatz-Funktionen</h4>
             
             <div class="search-container">
@@ -77,15 +87,23 @@
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // Zeigt den Bestand sofort beim Laden an, blockiert aber die Kamera
         window.addEventListener('load', () => {
-            if ('BarcodeDetector' in window) {
-                barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
-                startKamera();
-            } else {
-                alert("Bitte nutze Google Chrome auf Android.");
-            }
             updateListDisplay();
         });
+
+        // Diese Funktion zündet erst, wenn du den fetten orangen Button drückst!
+        function initSystem() {
+            document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
+            document.getElementById("status-label").style.color = "#00b300";
+            document.getElementById("start-btn").style.display = "none";
+            document.getElementById("webcam").style.display = "block";
+
+            if ('BarcodeDetector' in window) {
+                barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
+            }
+            startKamera();
+        }
 
         function startKamera() {
             navigator.mediaDevices.getUserMedia({ 
@@ -114,15 +132,13 @@
                     utterance.rate = 0.85;    
                     window.speechSynthesis.speak(utterance);
                 }
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function playScanSound(isRemoval) {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                 oscillator = audioCtx.createOscillator();
+                let oscillator = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
                 oscillator.type = 'sine';
                 
@@ -143,9 +159,7 @@
                     oscillator.start();
                     oscillator.stop(audioCtx.currentTime + 0.12);
                 }
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function scanSchleife(video) {
@@ -156,14 +170,9 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // INTELLIGENTER WECHSEL-FIX: Erkennt automatisch Liste ODER Einzelobjekt!
-                        let code = "";
-                        if (barcodes[0] && barcodes[0].rawValue) {
-                            code = barcodes[0].rawValue;
-                        } else if (barcodes.rawValue) {
-                            code = barcodes.rawValue;
-                        }
-
+                        // Das ist die Detektor-Zeile aus deinem funktionierenden Index-File!
+                        let code = barcodes[0].rawValue;
+                        
                         if (!code) return;
                         
                         let now = Date.now();
@@ -187,17 +196,3 @@
                             } else if (streakCount === 2) {
                                 speakCombatArms("Double Kill");
                             } else if (streakCount === 3) {
-                                speakCombatArms("Multi Kill");
-                            } else if (streakCount === 4) {
-                                speakCombatArms("Ultra Kill");
-                            } else if (streakCount === 5) {
-                                speakCombatArms("Fantastic");
-                            } else if (streakCount >= 6) {
-                                speakCombatArms("Unbelievable");
-                            }
-                        } else {
-                            playScanSound(mode === "remove");
-                        }
-
-                        if (mode === "add") {
-                            if (!products[code]) {
