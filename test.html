@@ -125,10 +125,10 @@
                         }
                         
                         localStorage.setItem('testProducts', JSON.stringify(products));
-                        updateListDisplay();
+                        // HIER BERUHIGT: Wir laden die Liste NICHT bei jedem Frame neu, um den Prozessor zu entlasten!
                     }
                 } catch (e) { console.error(e); }
-            }, 200);
+            }, 250); // Scan-Takt leicht verlangsamt auf 250ms, damit das Handy durchatmen kann
         }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
@@ -206,7 +206,3 @@
             }
             let exportString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
             navigator.clipboard.writeText(exportString).then(() => {
-                alert("📋 Bestand erfolgreich kopiert! Du kannst den Code jetzt per WhatsApp an ein anderes Handy schicken.");
-            }).catch(err => {
-                alert("Fehler beim Kopieren. Hier ist dein Code:\n\n" + exportString);
-            });
