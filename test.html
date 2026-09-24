@@ -33,7 +33,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Die originale, sofort startende Kamera aus deiner funktionierenden Index -->
+        <!-- Die originale Kamera, die sofort von selbst anspringt -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -41,7 +41,6 @@
         
         <div class="section-title">📦 Bestand</div>
         
-        <!-- Die Sortierungs-Knöpfe direkt über der Liste -->
         <div class="sort-container">
             <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
             <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
@@ -50,7 +49,6 @@
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- Der Combat Arms Game Mode Schalter ganz unten -->
         <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
     </div>
 
@@ -68,7 +66,7 @@
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // EXAKT DIE IDENTISCHE START-STRUKTUR AUS DEINER FUNKTIONIERENDEN INDEX-DATEI
+        // EXAKT DIE IDENTISCHE START-STRUKTUR AUS DEINER STABILEN INDEX-DATEI
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -156,7 +154,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // MIT DER NULL AUS DER ORIGINAL-VERSION ABSOLUT GESICHERT
+                        // MIT DER NULL AUS DER STABILEN VERSION ABGESICHERT
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -207,3 +205,6 @@
                             }
                         }
                         
+                        localStorage.setItem('testProducts', JSON.stringify(products));
+                        updateListDisplay();
+                    }
