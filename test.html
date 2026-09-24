@@ -147,7 +147,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // EXAKT KORRIGIERT: Rührt die eckige Klammer Null ab jetzt niemals an!
+                        // KORRIGIERT: barcodes[0].rawValue steht hier unantastbar!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
