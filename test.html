@@ -10,66 +10,49 @@
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        
-        .sort-container { display: flex; gap: 8px; margin: 15px 0 10px 0; }
-        .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
-        .btn-sort.active { background: #8a2be2; color: white; }
-        
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 16px; }
+        .btn-cam-restart { background: #ff9800; color: white; padding: 10px; font-size: 15px; margin-top: 5px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
-        
-        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
-        .stats-box b { color: #00b300; }
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
-        
-        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
-        <video id="webcam" autoplay playsinline></video>
-        
-        <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
-        <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
-        
-        <div class="section-title">📦 Bestand</div>
-        
-        <div class="sort-container">
-            <button class="btn-sort active" id="sort-name" onclick="triggerSort('name')">A-Z 🔤</button>
-        </div>
-
-        <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
-
-        <div class="stats-box" id="stats-anzeige">
-            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+        <div id="app-screen">
+            <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
+            
+            <!-- Der stabile Kamera-Sucher -->
+            <video id="webcam" autoplay playsinline></video>
+            
+            <!-- Der neue Rettungs-Knopf, falls die Kamera blockiert -->
+            <button class="btn-cam-restart" onclick="startKamera()">Kamera neu starten 📷</button>
+            
+            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+            
+            <h3>Dein Test-Bestand:</h3>
+            <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // ALLGEMEINE VARIABLEN
-        // ==========================================
         let mode = "add";
-        let currentSort = "name";
-        let sortDirection = 1;
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
+        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
-        // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
+                startKamera();
+            } else {
+                alert("Bitte nutze Google Chrome auf Android.");
             }
-            startKamera();
             updateListDisplay();
         });
 
@@ -86,7 +69,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera-Zugriff blockiert.");
+                alert("Kamera-Zugriff blockiert. Tippe auf den orangen Button zum Reparieren.");
             });
         }
 
@@ -96,14 +79,10 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes && barcodes.length > 0) {
-                        
-                        // ABSOLUT SICHER UND UNBERÜHRBAR VERANKERT: barcodes[0].rawValue
+                    if (barcodes.length > 0) {
                         let code = barcodes[0].rawValue;
-                        
-                        if (!code) return;
-                        
                         let now = Date.now();
+                        
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
                         
                         lastScannedCode = code;
@@ -113,7 +92,14 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
+                                // Speichert Name, Datum und Ort als separate Felder im Speicher ab!
+                                products[code] = { 
+                                    rawName: "", 
+                                    datum: "", 
+                                    ort: "",
+                                    fullName: "Neu: " + code, 
+                                    anzahl: 1 
+                                };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -127,9 +113,10 @@
                         localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error(e);
+                }
             }, 200);
-        }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
 
