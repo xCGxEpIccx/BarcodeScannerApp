@@ -13,7 +13,6 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
-        /* Das aufgeteilte Layout unter der Kamera */
         .cam-game-container { display: flex; gap: 10px; margin-top: 5px; }
         .btn-cam-restart { flex: 1; background: #ff9800; color: white; margin: 0; padding: 12px 5px; }
         .btn-game-mode { flex: 2; background: #555; color: white; margin: 0; padding: 12px 5px; }
@@ -42,7 +41,6 @@
             
             <video id="webcam" autoplay playsinline></video>
             
-            <!-- Die neuen aufgeteilten Buttons nebeneinander -->
             <div class="cam-game-container">
                 <button class="btn-cam-restart" onclick="startKamera()">📷</button>
                 <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
@@ -76,7 +74,6 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Variablen für den Combat Arms Spielemodus
         let gameModeActive = false;
         let streakCount = 0;
         let lastStreakTime = 0;
@@ -111,7 +108,6 @@
             });
         }
 
-        // Steuert das Ein- und Ausschalten des Game Modes
         function toggleGameMode() {
             gameModeActive = !gameModeActive;
             const btn = document.getElementById("game-mode-btn");
@@ -126,15 +122,14 @@
             }
         }
 
-        // Generiert die brachiale, tiefe Ansager-Stimme aus Combat Arms
         function speakCombatArms(text) {
             try {
                 if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel(); // Stoppt laufendes Gerede sofort
+                    window.speechSynthesis.cancel(); 
                     let utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US'; // Ansager spricht immer Englisch
-                    utterance.pitch = 0.4;    // Maximale Tiefe für eine brutale Stimme!
-                    utterance.rate = 0.85;    // Leicht verlangsamt für maximalen Eindruck
+                    utterance.lang = 'en-US'; 
+                    utterance.pitch = 0.4;    
+                    utterance.rate = 0.85;    
                     window.speechSynthesis.speak(utterance);
                 }
             } catch (e) {
@@ -179,7 +174,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // UNZERSTÖRBAR: Hier steht jetzt die 0 haarscharf drin!
+                        // KORREKTUR: Greift jetzt wieder absolut stabil mit [0] zu!
                         let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
@@ -190,15 +185,26 @@
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        // Abwicklung des Spiele-Sounds und der Streaks
                         if (gameModeActive && mode === "add") {
-                            // Checkt, ob der letzte Scan weniger als 10 Sekunden (10000ms) her ist
                             if (now - lastStreakTime < 10000) {
                                 streakCount++;
                             } else {
-                                streakCount = 1; // Reset falls zu langsam
+                                streakCount = 1; 
                             }
                             lastStreakTime = now;
 
-                            // Triggert die passenden Ansager-Stufen
                             if (streakCount === 1) {
+                                playScanSound(false); 
+                            } else if (streakCount === 2) {
+                                speakCombatArms("Double Kill");
+                            } else if (streakCount === 3) {
+                                speakCombatArms("Multi Kill");
+                            } else if (streakCount === 4) {
+                                speakCombatArms("Ultra Kill");
+                            } else if (streakCount === 5) {
+                                speakCombatArms("Fantastic");
+                            } else if (streakCount >= 6) {
+                                speakCombatArms("Unbelievable");
+                            }
+                        } else {
+                            playScanSound(mode === "remove");
