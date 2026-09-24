@@ -22,6 +22,7 @@
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
         
+        /* Statistik-Bereich optisch schön ganz unten platziert */
         .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
         .stats-box b { color: #00b300; }
     </style>
@@ -30,7 +31,6 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -63,7 +63,7 @@
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // 📷 HIER STARTET DER KAMERA-CODE (UNANTASTBAR!)
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -98,7 +98,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE DIKTIERTE WUNSCH-ZEILE MIT ECKIGER KLAMMER NULL: barcodes[0].rawValue
+                        // HIER SITZT DIE ECKIGE KLAMMER NULL TODSICHER DRIN!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -113,6 +113,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
+                                // Bereitet die Schubladen für Name, Datum und Ort vor
                                 products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
@@ -125,10 +126,10 @@
                         }
                         
                         localStorage.setItem('testProducts', JSON.stringify(products));
-                        // HIER BERUHIGT: Wir laden die Liste NICHT bei jedem Frame neu, um den Prozessor zu entlasten!
+                        updateListDisplay();
                     }
                 } catch (e) { console.error(e); }
-            }, 250); // Scan-Takt leicht verlangsamt auf 250ms, damit das Handy durchatmen kann
+            }, 200);
         }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
@@ -138,39 +139,49 @@
         // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (DEINE UPGRADES!)
         // ==========================================
         
+        // Das schlaue 3-Popup-Eingabesystem mit automatischer Vorbefüllung und Merkfunktion
         function renameProduct(code) {
             let item = products[code];
 
+            // 1. Popup für den eigentlichen Namen
             let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
             if (nameInput === null) return; 
             
+            // 2. Popup für das Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
+            // 3. Popup für den Lagerort
             let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
             if (ortInput === null) return;
 
+            // Speichert die Rohdaten in das jeweilige Produkt
             item.rawName = nameInput;
             item.datum = datumInput;
             item.ort = ortInput;
 
+            // Schlaue Zusammenführung: Suchen, ob es SCHON einen anderen Barcode mit genau diesem Namen gibt
             let bereinigterNeuerName = nameInput.trim().toLowerCase();
             let gefundenerCode = Object.keys(products).find(c => 
                 c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
             );
 
             if (gefundenerCode && bereinigterNeuerName !== "") {
+                // Wenn Name existiert, schmeißen wir die gezählten Stücke auf den alten Eintrag drauf!
                 products[gefundenerCode].anzahl += item.anzahl;
                 products[gefundenerCode].datum = datumInput;
                 products[gefundenerCode].ort = ortInput;
                 
+                // Aktualisiert die Anzeige des zusammengeführten Produkts
                 let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
                 let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
                 let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
                 products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
 
+                // Löscht diesen temporären Scan-Eintrag, da er jetzt verschmolzen ist
                 delete products[code];
             } else {
+                // Keine Namensgleichheit -> Baut die Zeile einfach ganz normal zusammen
                 let anzeigeName = item.rawName || "Unbekannt";
                 let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
                 let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
@@ -193,16 +204,51 @@
         }
 
         function triggerSort(type) {
-            sortDirection = sortDirection * -1;
-            const nameBtn = document.getElementById('sort-name');
-            nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
-            updateListDisplay();
-        }
 
-        function exportBestand() {
-            if (Object.keys(products).length === 0) {
-                alert("Dein Bestand ist leer! Es gibt nichts zu exportieren.");
-                return;
-            }
-            let exportString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            navigator.clipboard.writeText(exportString).then(() => {
+sortDirection = sortDirection * -1;
+const nameBtn = document.getElementById('sort-name');
+nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
+updateListDisplay();
+}
+function updateListDisplay() {
+const listDiv = document.getElementById("bestand-liste");
+const statsDiv = document.getElementById("stats-anzeige");
+let keys = Object.keys(products);
+if (keys.length === 0) {
+listDiv.innerHTML = "Dein Bestand ist leer.";
+statsDiv.innerHTML = "Insgesamt: 0 verschiedene Artikel | Gesamtstückzahl: 0 Stk.";
+return;
+}
+// Sortiert die Liste alphabetisch
+keys.sort((a, b) => {
+let itemA = products[a];
+let itemB = products[b];
+let nameA = itemA.fullName || "zzz";
+let nameB = itemB.fullName || "zzz";
+return nameA.localeCompare(nameB) * sortDirection;
+});
+let html = "";
+let gesamtStueckzahl = 0;
+let verschiedeneArtikel = keys.length;
+for (let i = 0; i < keys.length; i++) {
+let code = keys[i];
+let item = products[code];
+gesamtStueckzahl += item.anzahl;
+html += <div class="product-item"><div class="product-header"><span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>;
+}
+listDiv.innerHTML = html;
+// Aktualisiert die Statistik-Box ganz unten live auf dem Schirm
+statsDiv.innerHTML = Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b>;
+}
+
+
+4. Klicke ganz unten auf den grünen Button **`Commit changes`** und bestätige.
+
+---
+
+### Jetzt der Test:
+Warte 30 Sekunden ab. **Schließe am Smartphone den Browser-Tab der Testseite komplett und öffne den Test-Link in einem neuen privaten (Inkognito) Fenster neu.** 
+
+<FollowUp>
+Hat das Speichern geklappt? Wenn du den **Test-Link neu öffnest**, startet das Kamerabild sofort fehlerfrei durch und verhalten sich die **3 Pop-ups beim lila N** genau so mit der leeren Merkfunktion, wie du es wolltest?
+</FollowUp>
