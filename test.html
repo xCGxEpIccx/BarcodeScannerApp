@@ -30,7 +30,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der Kamerasucher aus deinem funktionierenden Index -->
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -64,8 +64,10 @@
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
+                startKamera();
+            } else {
+                alert("Bitte nutze Google Chrome auf Android.");
             }
-            startKamera();
             updateListDisplay();
         });
 
@@ -147,7 +149,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // KORRIGIERT: barcodes[0].rawValue steht hier unantastbar!
+                        // UNBERÜHRBAR UND FEHLERFREI: barcodes[0].rawValue
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -212,7 +214,3 @@
             item.fullName = nameInput;
             
             localStorage.setItem('testProducts', JSON.stringify(products));
-            updateListDisplay();
-        }
-
-        function setMode(newMode) {
