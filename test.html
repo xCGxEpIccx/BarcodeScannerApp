@@ -7,73 +7,72 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; font-weight: bold; }
-        input, select { background: #222; color: white; text-align: center; }
-        button { cursor: pointer; }
+        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        
-        /* Aufgeteiltes Layout unter der Kamera */
-        .cam-game-container { display: flex; gap: 10px; margin-top: 5px; }
-        .btn-cam-restart { flex: 1; background: #ff9800; color: white; margin: 0; padding: 12px 5px; }
-        .btn-game-mode { flex: 2; background: #555; color: white; margin: 0; padding: 12px 5px; }
-        .btn-game-mode.active { background: #007bff; }
-        
-        /* Suche */
-        .search-container { position: relative; margin: 15px 0 5px 0; }
-        .search-input { text-align: left; padding-left: 45px; background: #222; color: white; border: 1px solid #444; }
-        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; }
-        
-        /* Sortierung */
-        .sort-container { display: flex; gap: 8px; margin-bottom: 10px; }
-        .btn-sort { flex: 1; padding: 10px 5px; font-size: 13px; background: #333; color: #ccc; margin: 0; }
-        .btn-sort.active { background: #8a2be2; color: white; }
-        
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; max-height: 350px; overflow-y: auto; font-size: 16px; }
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
-        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        /* HIER SIND DIE ADVANCED SETTINGS VERSTECKT */
+        .btn-advanced-toggle { background: #333; color: #aaa; font-size: 14px; padding: 10px; margin-top: 20px; }
+        .advanced-panel { display: none; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px dashed #444; margin-top: 10px; text-align: left; }
+        
+        /* Styling für Suche & Sortierung im Panel */
+        .search-container { position: relative; margin: 10px 0; }
+        .search-input { width: 100%; padding: 12px 12px 12px 40px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+        .sort-container { display: flex; gap: 5px; margin: 10px 0; }
+        .btn-sort { flex: 1; padding: 8px 2px; font-size: 11px; background: #2a2a2a; color: #bbb; margin: 0; }
+        .btn-sort.active { background: #8a2be2; color: white; }
+        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 10px; margin-top: 10px; }
+        .btn-game-mode.active { background: #007bff; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="app-screen">
-            <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
+        <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
+        
+        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
+        <video id="webcam" autoplay playsinline></video>
+        
+        <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+        <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        
+        <h3>📦 Bestand</h3>
+        <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <!-- DER GEHEIME ADVANCED BUTTON -->
+        <button class="btn-advanced-toggle" onclick="toggleAdvancedPanel()">⚙️ Erweiterte Einstellungen (Advanced)</button>
+        
+        <!-- DAS ISOLIERTE ADVANCED MENÜ -->
+        <div id="advanced-panel" class="advanced-panel">
+            <h4 style="margin: 0 0 10px 0; color: #ff9800; text-align: center;">Zusatz-Funktionen</h4>
             
-            <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
-            <video id="webcam" autoplay playsinline></video>
-            
-            <div class="cam-game-container">
-                <button class="btn-cam-restart" onclick="startKamera()">📷</button>
-                <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
-            </div>
-            
-            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
-            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
-            
-            <div class="section-title">📦 Bestand</div>
-            
+            <!-- Suche -->
             <div class="search-container">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-box" class="search-input" placeholder="Bestand durchsuchen..." oninput="updateListDisplay()">
             </div>
             
+            <!-- Wechsel-Sortierung -->
             <div class="sort-container">
                 <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
                 <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
                 <button class="btn-sort" id="sort-loc" onclick="setSort('location')">Lagerort 📍</button>
             </div>
-            
-            <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+            <!-- Combat Arms Modus -->
+            <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
         </div>
     </div>
 
     <script>
         let mode = "add";
-        let currentSort = "name"; 
-        let sortDirection = 1; 
+        let currentSort = "name";
+        let sortDirection = 1;
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
@@ -82,14 +81,17 @@
         let streakCount = 0;
         let lastStreakTime = 0;
 
+        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // EXAKT DER INTEGRIERTE KAMERA-START AUS DER INDEX-VERSION
+        // EXAKT DIE ORIGINALE KAMERA-STARTLOGIK AUS DER STABILEN INDEX-VERSION
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
+                startKamera();
+            } else {
+                alert("Bitte nutze Google Chrome auf Android.");
             }
-            startKamera();
             updateListDisplay();
         });
 
@@ -100,29 +102,14 @@
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
-                // Bindet die Schleife direkt an den Video-Stream, ohne Umwege!
-                video.onplay = () => {
+                video.addEventListener('play', () => {
                     scanSchleife(video);
-                };
+                });
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera blockiert.");
+                alert("Kamera-Zugriff blockiert.");
             });
-        }
-
-        function toggleGameMode() {
-            gameModeActive = !gameModeActive;
-            const btn = document.getElementById("game-mode-btn");
-            if (gameModeActive) {
-                btn.innerText = "🎮 Game Mode: AN";
-                btn.classList.add("active");
-                speakCombatArms("Game Mode Activated");
-            } else {
-                btn.innerText = "🎮 Game Mode: AUS";
-                btn.classList.remove("active");
-                streakCount = 0;
-            }
         }
 
         function speakCombatArms(text) {
@@ -136,7 +123,7 @@
                     window.speechSynthesis.speak(utterance);
                 }
             } catch (e) {
-                console.error("Sprachfehler:", e);
+                console.error(e);
             }
         }
 
@@ -145,7 +132,6 @@
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 let oscillator = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
-                
                 oscillator.type = 'sine';
                 
                 if (isRemoval) {
@@ -166,7 +152,7 @@
                     oscillator.stop(audioCtx.currentTime + 0.12);
                 }
             } catch (e) {
-                console.error("Audio-Fehler:", e);
+                console.error(e);
             }
         }
 
@@ -176,8 +162,8 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes && barcodes.length > 0) {
-                        // MIT DER NULL AUS DER FUNKTIONIERENDEN VERSION ABSOLUT GESICHERT!
+                    if (barcodes.length > 0) {
+                        // MIT DER NULL AUS DER BASIS-VERSION GESICHERT!
                         let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
@@ -188,7 +174,6 @@
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        // Combat Arms Streak-Logik
                         if (gameModeActive && mode === "add") {
                             if (now - lastStreakTime < 10000) {
                                 streakCount++;
@@ -206,3 +191,12 @@
                             } else if (streakCount === 4) {
                                 speakCombatArms("Ultra Kill");
                             } else if (streakCount === 5) {
+                                speakCombatArms("Fantastic");
+                            } else if (streakCount >= 6) {
+                                speakCombatArms("Unbelievable");
+                            }
+                        } else {
+                            playScanSound(mode === "remove");
+                        }
+
+                        if (mode === "add") {
