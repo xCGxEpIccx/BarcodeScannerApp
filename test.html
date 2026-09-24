@@ -12,7 +12,12 @@
         button { cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        .btn-cam-restart { background: #ff9800; color: white; padding: 10px; font-size: 15px; margin-top: 5px; }
+        
+        /* Das aufgeteilte Layout unter der Kamera */
+        .cam-game-container { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-cam-restart { flex: 1; background: #ff9800; color: white; margin: 0; padding: 12px 5px; }
+        .btn-game-mode { flex: 2; background: #555; color: white; margin: 0; padding: 12px 5px; }
+        .btn-game-mode.active { background: #007bff; }
         
         .search-container { position: relative; margin: 15px 0 5px 0; }
         .search-input { text-align: left; padding-left: 45px; background: #222; color: white; border: 1px solid #444; }
@@ -37,7 +42,11 @@
             
             <video id="webcam" autoplay playsinline></video>
             
-            <button class="btn-cam-restart" onclick="startKamera()">Kamera neu starten 📷</button>
+            <!-- Die neuen aufgeteilten Buttons nebeneinander -->
+            <div class="cam-game-container">
+                <button class="btn-cam-restart" onclick="startKamera()">📷</button>
+                <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
+            </div>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
@@ -62,10 +71,15 @@
     <script>
         let mode = "add";
         let currentSort = "name"; 
-        let sortDirection = 1; // 1 = Normal (Aufsteigend), -1 = Umgekehrt (Absteigend)
+        let sortDirection = 1; 
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
+
+        // Variablen für den Combat Arms Spielemodus
+        let gameModeActive = false;
+        let streakCount = 0;
+        let lastStreakTime = 0;
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
@@ -95,6 +109,37 @@
                 console.error(err);
                 alert("Kamera blockiert.");
             });
+        }
+
+        // Steuert das Ein- und Ausschalten des Game Modes
+        function toggleGameMode() {
+            gameModeActive = !gameModeActive;
+            const btn = document.getElementById("game-mode-btn");
+            if (gameModeActive) {
+                btn.innerText = "🎮 Game Mode: AN";
+                btn.classList.add("active");
+                speakCombatArms("Game Mode Activated");
+            } else {
+                btn.innerText = "🎮 Game Mode: AUS";
+                btn.classList.remove("active");
+                streakCount = 0;
+            }
+        }
+
+        // Generiert die brachiale, tiefe Ansager-Stimme aus Combat Arms
+        function speakCombatArms(text) {
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel(); // Stoppt laufendes Gerede sofort
+                    let utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US'; // Ansager spricht immer Englisch
+                    utterance.pitch = 0.4;    // Maximale Tiefe für eine brutale Stimme!
+                    utterance.rate = 0.85;    // Leicht verlangsamt für maximalen Eindruck
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                console.error("Sprachfehler:", e);
+            }
         }
 
         function playScanSound(isRemoval) {
@@ -134,7 +179,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // ABSOLUT GEFIXT: Holt sich jetzt todsicher das erste Element aus der Liste!
+                        // UNZERSTÖRBAR: Hier steht jetzt die 0 haarscharf drin!
                         let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
@@ -144,66 +189,16 @@
                         lastScanTime = now;
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
-                        playScanSound(mode === "remove");
 
-                        if (mode === "add") {
-                            if (!products[code]) {
-                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
+                        // Abwicklung des Spiele-Sounds und der Streaks
+                        if (gameModeActive && mode === "add") {
+                            // Checkt, ob der letzte Scan weniger als 10 Sekunden (10000ms) her ist
+                            if (now - lastStreakTime < 10000) {
+                                streakCount++;
                             } else {
-                                products[code].anzahl += 1;
+                                streakCount = 1; // Reset falls zu langsam
                             }
-                        } else if (mode === "remove") {
-                            if (products[code]) {
-                                products[code].anzahl -= 1;
-                                if (products[code].anzahl <= 0) delete products[code];
-                            }
-                        }
-                        
-                        localStorage.setItem('testProducts', JSON.stringify(products));
-                        updateListDisplay();
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            }, 200);
-        }
+                            lastStreakTime = now;
 
-        function renameProduct(code) {
-            let item = products[code];
-
-            let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
-            if (nameInput === null) return;
-            item.rawName = nameInput;
-
-            let datumInput = prompt("2. Ablaufdatum eingeben:", item.datum || "");
-            if (datumInput === null) return;
-            item.datum = datumInput;
-
-            let ortInput = prompt("3. Lagerort eingeben:", item.ort || "");
-            if (ortInput === null) return;
-            item.ort = ortInput;
-
-            let anzeigeName = item.rawName || "Unbekannt";
-            let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
-            let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
-            
-            item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
-            
-            localStorage.setItem('testProducts', JSON.stringify(products));
-            updateListDisplay();
-        }
-
-        function setMode(newMode) {
-            mode = newMode;
-            if(mode === "add") {
-                document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#00b300";
-            } else {
-                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#d90000";
-            }
-        }
-
-        // Neue schlaue Wechsel-Sortierung
-        function setSort(type) {
-            if (currentSort === type) {
+                            // Triggert die passenden Ansager-Stufen
+                            if (streakCount === 1) {
