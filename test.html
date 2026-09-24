@@ -13,6 +13,7 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
+        /* Der blinkende Kamera-Startknopf */
         .btn-start-scanner { background: #ff9800; color: white; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         
@@ -41,6 +42,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #ff9800;">Scanner im Standby | Bitte starten</h3>
         
+        <!-- Der manuelle Kamera-Startknopf -->
         <button id="start-btn" class="btn-start-scanner" onclick="initSystem()">Kamera & Scanner starten 📷</button>
         
         <video id="webcam" autoplay playsinline></video>
@@ -146,7 +148,7 @@
         function playScanSound(isRemoval) {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let oscillator = audioCtx.createOscillator(); // HIER WAR DER FEHLER GEFIXT!
+                let oscillator = audioCtx.createOscillator(); 
                 let gainNode = audioCtx.createGain();
                 oscillator.type = 'sine';
                 
@@ -178,7 +180,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // Der unzerstörbare Code-Check gegen Abstürze
+                        // JETZT EXAKT GEFIXT MIT DER NULL [0]: Absolut identisch zur stabilen index.html!
                         let code = "";
                         if (barcodes[0] && barcodes[0].rawValue) {
                             code = barcodes[0].rawValue;
@@ -200,5 +202,3 @@
                             if (now - lastStreakTime < 10000) {
                                 streakCount++;
                             } else {
-                                streakCount = 1; 
-                            }
