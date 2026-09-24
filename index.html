@@ -13,7 +13,7 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
-        /* Das neue Zwei-Spalten-Layout für die Schalter */
+        /* Das Zwei-Spalten-Layout für die Schalter */
         .toggle-container { display: flex; gap: 10px; margin: 5px 0 15px 0; }
         .btn-toggle-sub { flex: 1; font-size: 14px; padding: 12px 5px; background: #555; color: white; margin: 0; }
         .btn-toggle-sub.active { background: #007bff; }
@@ -33,7 +33,7 @@
             
             <video id="webcam" autoplay playsinline></video>
             
-            <!-- Die zwei neuen, aufgeteilten Buttons nebeneinander -->
+            <!-- Die zwei aufgeteilten Buttons nebeneinander -->
             <div class="toggle-container">
                 <button class="btn-toggle-sub active" id="date-toggle-btn" onclick="toggleDateQuery()">Datum: AN ⏱️</button>
                 <button class="btn-toggle-sub active" id="location-toggle-btn" onclick="toggleLocationQuery()">Ort: AN 📍</button>
@@ -57,7 +57,7 @@
         let askForDate = true;
         let askForLocation = true;
 
-        // Versucht die Datenbank und den Bestand aus dem Handyspeicher zu laden
+        // Lädt Datenbank und Bestand permanent aus dem Handyspeicher
         let produktDatenbank = JSON.parse(localStorage.getItem('produktDatenbank')) || {
             "9120139158524": "Vollmilch 1L (Penny)",
             "9019100592002": "Ottakringer Bier 0.5L"
@@ -70,7 +70,7 @@
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
             startKamera();
-            updateListDisplay(); // Zeigt die geladenen Daten sofort an
+            updateListDisplay(); // Zeigt den gespeicherten Bestand sofort beim Laden an
         });
 
         function startKamera() {
@@ -96,7 +96,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        // KORREKTUR: Greift jetzt wieder mit der Null fehlerfrei auf das Kamera-Array zu!
+                        // JETZT EXAKT GEFIXT: Greift wieder mit der [0] auf den gelesenen Code zu!
                         let code = barcodes[0].rawValue;
                         let now = Date.now();
                         
@@ -137,9 +137,7 @@
                             if (ortInput) ort = ortInput;
                         }
 
-                        // Kombiniert Datum und Ort als Kombi-Schlüssel
                         let kombiKey = ablaufdatum + " | " + ort;
-
                         verarbeiteBestand(code, kombiKey);
                         
                         setTimeout(() => { isScanningBlock = false; }, 2000);
@@ -175,7 +173,7 @@
                 if (Object.keys(bestand[zielCode]).length === 0) delete bestand[zielCode];
             }
 
-            // Speichert die Daten permanent im Handy
+            // Sichert alles bombenfest im Smartphone-Speicher
             localStorage.setItem('scannerBestand', JSON.stringify(bestand));
             updateListDisplay();
         }
@@ -211,3 +209,4 @@
                 let alterNameGleich = Object.keys(produktDatenbank).filter(k => produktDatenbank[k] === alterName);
                 alterNameGleich.forEach(k => {
                     produktDatenbank[k] = neuerName;
+                });
