@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner Pro</title>
+    <title>Barcode Scanner Pro - TESTSEITE</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -12,30 +12,37 @@
         button { font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        .btn-toggle-date { background: #555; color: white; font-size: 16px; padding: 10px; margin: 5px 0 15px 0; width: 100%; }
-        .btn-toggle-date.active { background: #007bff; }
+        
+        /* Das Zwei-Spalten-Layout für die Schalter */
+        .toggle-container { display: flex; gap: 10px; margin: 5px 0 15px 0; }
+        .btn-toggle-sub { flex: 1; font-size: 14px; padding: 12px 5px; background: #555; color: white; margin: 0; }
+        .btn-toggle-sub.active { background: #007bff; }
+        
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; position: relative; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        .date-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; margin-top: 4px; }
+        .sub-item { padding-left: 15px; color: #aaa; font-size: 14px; font-family: monospace; margin-top: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Haupt-Bildschirm (Startet jetzt sofort ohne Login!) -->
         <div id="app-screen">
-            <h3 id="status-label" style="color: #00b300;">Modus: Hinzufügen (+) | Bereit zum Scannen</h3>
+            <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
             
             <video id="webcam" autoplay playsinline></video>
             
-            <button class="btn-toggle-date active" id="date-toggle-btn" onclick="toggleDateQuery()">Ablaufdatum-Abfrage: AN ⏱️</button>
+            <!-- Die zwei neuen, aufgeteilten Buttons nebeneinander -->
+            <div class="toggle-container">
+                <button class="btn-toggle-sub active" id="date-toggle-btn" onclick="toggleDateQuery()">Datum: AN ⏱️</button>
+                <button class="btn-toggle-sub active" id="location-toggle-btn" onclick="toggleLocationQuery()">Ort: AN 📍</button>
+            </div>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
             
-            <h3>Dein Bestand:</h3>
+            <h3>Dein Test-Bestand:</h3>
             <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
         </div>
     </div>
@@ -46,21 +53,24 @@
         let lastScanTime = 0;
         let barcodeDetector;
         let isScanningBlock = false;
+        
         let askForDate = true;
+        let askForLocation = true;
 
-        let produktDatenbank = {
+        // Versucht die Datenbank und den Bestand aus dem Handyspeicher (LocalStorage) zu laden
+        let produktDatenbank = JSON.parse(localStorage.getItem('produktDatenbank')) || {
             "9120139158524": "Vollmilch 1L (Penny)",
             "9019100592002": "Ottakringer Bier 0.5L"
         };
 
-        let bestand = {};
+        let bestand = JSON.parse(localStorage.getItem('scannerBestand')) || {};
 
-        // Startet den Barcode-Detector direkt beim Laden der Seite
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
             startKamera();
+            updateListDisplay(); // Zeigt die geladenen Daten sofort an
         });
 
         function startKamera() {
@@ -86,6 +96,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
+                        // HAARSHARF KORRIGIERT: Holt den Code wieder stabil über!
                         let code = barcodes[0].rawValue;
                         let now = Date.now();
                         
@@ -97,10 +108,19 @@
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
+                        // Wenn der Barcode komplett neu ist
                         if (!produktDatenbank[code]) {
-                            let neuerName = prompt("Neues Produkt erkannt! Bitte Namen eingeben:", "Produkt " + code);
+                            let verfuegbareNamen = Object.values(produktDatenbank);
+                            let nachricht = "Neues Produkt erkannt!\n";
+                            if(verfuegbareNamen.length > 0) {
+                                nachricht += "Bereits existierende Namen:\n• " + [...new Set(verfuegbareNamen)].join("\n• ") + "\n\n";
+                            }
+                            nachricht += "Gib den Namen ein:";
+
+                            let neuerName = prompt(nachricht, "Produkt " + code);
                             if (neuerName) {
                                 produktDatenbank[code] = neuerName;
+                                localStorage.setItem('produktDatenbank', JSON.stringify(produktDatenbank));
                             } else {
                                 produktDatenbank[code] = "Unbekannt (" + code + ")";
                             }
@@ -108,11 +128,20 @@
 
                         let ablaufdatum = "Kein Datum";
                         if (mode === "add" && askForDate) {
-                            let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM) oder leer lassen:", "");
+                            let datumInput = prompt("Bitte Ablaufdatum eingeben (z.B. DD.MM):", "");
                             if (datumInput) ablaufdatum = datumInput;
                         }
 
-                        verarbeiteBestand(code, ablaufdatum);
+                        let ort = "Kein Ort";
+                        if (mode === "add" && askForLocation) {
+                            let ortInput = prompt("Bitte Lagerort eingeben (z.B. Kühlschrank, Keller):", "");
+                            if (ortInput) ort = ortInput;
+                        }
+
+                        // Kombiniert Datum und Ort als einen Info-Eintrag
+                        let kombiKey = ablaufdatum + " | " + ort;
+
+                        verarbeiteBestand(code, kombiKey);
                         
                         setTimeout(() => { isScanningBlock = false; }, 2000);
                     }
@@ -122,27 +151,33 @@
             }, 250);
         }
 
-        function verarbeiteBestand(code, datum) {
-            if (!bestand[code]) {
-                bestand[code] = {};
+        function verarbeiteBestand(code, kombiKey) {
+            let name = produktDatenbank[code];
+            let existierenderCode = Object.keys(bestand).find(k => produktDatenbank[k] === name);
+            let zielCode = existierenderCode ? existierenderCode : code;
+
+            if (!bestand[zielCode]) {
+                bestand[zielCode] = {};
             }
 
             if (mode === "add") {
-                bestand[code][datum] = (bestand[code][datum] || 0) + 1;
+                bestand[zielCode][kombiKey] = (bestand[zielCode][kombiKey] || 0) + 1;
             } else if (mode === "remove") {
-                let daten = Object.keys(bestand[code]);
+                let daten = Object.keys(bestand[zielCode]);
                 if (daten.length > 0) {
-                    let zielDatum = daten[0];
+                    let zielKey = daten[0];
                     if (daten.length > 1) {
-                        let auswahl = prompt("Welches Ablaufdatum entfernen? Verfügbar:\n" + daten.join("\n"), daten[0]);
-                        if (bestand[code][auswahl]) zielDatum = auswahl;
+                        let auswahl = prompt("Welchen Eintrag entfernen? Verfügbar:\n" + daten.join("\n"), daten[0]);
+                        if (bestand[zielCode][auswahl]) zielKey = auswahl;
                     }
-                    bestand[code][zielDatum] -= 1;
-                    if (bestand[code][zielDatum] <= 0) delete bestand[code][zielDatum];
+                    bestand[zielCode][zielKey] -= 1;
+                    if (bestand[zielCode][zielKey] <= 0) delete bestand[zielCode][zielKey];
                 }
-                if (Object.keys(bestand[code]).length === 0) delete bestand[code];
+                if (Object.keys(bestand[zielCode]).length === 0) delete bestand[zielCode];
             }
 
+            // Sichert den Bestand bombenfest dauerhaft auf der Handy-Festplatte
+            localStorage.setItem('scannerBestand', JSON.stringify(bestand));
             updateListDisplay();
         }
 
@@ -150,10 +185,22 @@
             askForDate = !askForDate;
             const btn = document.getElementById("date-toggle-btn");
             if (askForDate) {
-                btn.innerText = "Ablaufdatum-Abfrage: AN ⏱️";
+                btn.innerText = "Datum: AN ⏱️";
                 btn.classList.add("active");
             } else {
-                btn.innerText = "Ablaufdatum-Abfrage: AUS ❌";
+                btn.innerText = "Datum: AUS ❌";
+                btn.classList.remove("active");
+            }
+        }
+
+        function toggleLocationQuery() {
+            askForLocation = !askForLocation;
+            const btn = document.getElementById("location-toggle-btn");
+            if (askForLocation) {
+                btn.innerText = "Ort: AN 📍";
+                btn.classList.add("active");
+            } else {
+                btn.innerText = "Ort: AUS ❌";
                 btn.classList.remove("active");
             }
         }
@@ -162,57 +209,4 @@
             let alterName = produktDatenbank[code] || code;
             let neuerName = prompt("Produktnamen ändern:", alterName);
             if (neuerName) {
-                produktDatenbank[code] = neuerName;
-                updateListDisplay();
-            }
-        }
-
-        function setMode(newMode) {
-            mode = newMode;
-            if(mode === "add") {
-                document.getElementById("status-label").innerText = "Modus: Hinzufügen (+) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#00b300";
-            } else {
-                document.getElementById("status-label").innerText = "Modus: Entfernen (-) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#d90000";
-            }
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let produktCodes = Object.keys(bestand);
-            
-            if (produktCodes.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                return;
-            }
-            
-            let html = "";
-            for (let i = 0; i < produktCodes.length; i++) {
-                let code = produktCodes[i];
-                let name = produktDatenbank[code] || code;
-                
-                let gesamtAnzahl = 0;
-                let datenHtml = "";
-                let daten = Object.keys(bestand[code]);
-                
-                for (let j = 0; j < daten.length; j++) {
-                    let d = daten[j];
-                    let anz = bestand[code][d];
-                    gesamtAnzahl += anz;
-                    datenHtml += `<div class="date-item">↳ ${d}: <b>${anz} Stk.</b></div>`;
-                }
-                
-                html += `<div class="product-item">
-                            <div class="product-header">
-                                <span>📦 <b>${name}</b> | Gesamt: <b>${gesamtAnzahl} Stk.</b></span>
-                                <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
-                            </div>
-                            ${datenHtml}
-                         </div>`;
-            }
-            listDiv.innerHTML = html;
-        }
-    </script>
-</body>
-</html>
+                let alterNameGleich = Object.keys(produktDatenbank).filter(k => produktDatenbank[k] === alterName);
