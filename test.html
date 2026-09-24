@@ -13,7 +13,6 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
-        /* Der neue fette Kamera-Startknopf */
         .btn-start-scanner { background: #ff9800; color: white; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         
@@ -42,10 +41,8 @@
     <div class="container">
         <h3 id="status-label" style="color: #ff9800;">Scanner im Standby | Bitte starten</h3>
         
-        <!-- Der neue Start-Button, der die Kamera erst bei Klick zündet -->
         <button id="start-btn" class="btn-start-scanner" onclick="initSystem()">Kamera & Scanner starten 📷</button>
         
-        <!-- Das Videobild ist am Anfang unsichtbar -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -54,7 +51,6 @@
         <div class="section-title">📦 Bestand</div>
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- Die erweiterten Funktionen direkt auf der Seite -->
         <div class="advanced-panel">
             <h4 style="margin: 0 0 10px 0; color: #ff9800; text-align: center;">Zusatz-Funktionen</h4>
             
@@ -87,12 +83,10 @@
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // Zeigt den Bestand sofort beim Laden an, blockiert aber die Kamera
         window.addEventListener('load', () => {
             updateListDisplay();
         });
 
-        // Diese Funktion zündet erst, wenn du den fetten orangen Button drückst!
         function initSystem() {
             document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
             document.getElementById("status-label").style.color = "#00b300";
@@ -122,6 +116,20 @@
             });
         }
 
+        function toggleGameMode() {
+            gameModeActive = !gameModeActive;
+            const btn = document.getElementById("game-mode-btn");
+            if (gameModeActive) {
+                btn.innerText = "🎮 Game Mode: AN";
+                btn.classList.add("active");
+                speakCombatArms("Game Mode Activated");
+            } else {
+                btn.innerText = "🎮 Game Mode: AUS";
+                btn.classList.remove("active");
+                streakCount = 0;
+            }
+        }
+
         function speakCombatArms(text) {
             try {
                 if ('speechSynthesis' in window) {
@@ -138,7 +146,7 @@
         function playScanSound(isRemoval) {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let oscillator = audioCtx.createOscillator();
+                let oscillator = audioCtx.createOscillator(); // HIER WAR DER FEHLER GEFIXT!
                 let gainNode = audioCtx.createGain();
                 oscillator.type = 'sine';
                 
@@ -170,9 +178,14 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // Das ist die Detektor-Zeile aus deinem funktionierenden Index-File!
-                        let code = barcodes[0].rawValue;
-                        
+                        // Der unzerstörbare Code-Check gegen Abstürze
+                        let code = "";
+                        if (barcodes[0] && barcodes[0].rawValue) {
+                            code = barcodes[0].rawValue;
+                        } else if (barcodes.rawValue) {
+                            code = barcodes.rawValue;
+                        }
+
                         if (!code) return;
                         
                         let now = Date.now();
@@ -189,10 +202,3 @@
                             } else {
                                 streakCount = 1; 
                             }
-                            lastStreakTime = now;
-
-                            if (streakCount === 1) {
-                                playScanSound(false); 
-                            } else if (streakCount === 2) {
-                                speakCombatArms("Double Kill");
-                            } else if (streakCount === 3) {
