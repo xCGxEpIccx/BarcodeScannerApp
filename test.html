@@ -10,49 +10,66 @@
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
-        .btn-cam-restart { background: #ff9800; color: white; padding: 10px; font-size: 15px; margin-top: 5px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
+        
+        .sort-container { display: flex; gap: 8px; margin: 15px 0 10px 0; }
+        .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
+        .btn-sort.active { background: #8a2be2; color: white; }
+        
+        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        /* Statistik-Bereich optisch schön ganz unten platziert */
+        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
+        .stats-box b { color: #00b300; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="app-screen">
-            <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
-            
-            <!-- Der stabile Kamera-Sucher -->
-            <video id="webcam" autoplay playsinline></video>
-            
-            <!-- Der neue Rettungs-Knopf, falls die Kamera blockiert -->
-            <button class="btn-cam-restart" onclick="startKamera()">Kamera neu starten 📷</button>
-            
-            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
-            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
-            
-            <h3>Dein Test-Bestand:</h3>
-            <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+        <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
+        
+        <video id="webcam" autoplay playsinline></video>
+        
+        <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+        <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        
+        <div class="section-title">📦 Bestand</div>
+        
+        <div class="sort-container">
+            <button class="btn-sort active" id="sort-name" onclick="triggerSort('name')">A-Z 🔤</button>
+        </div>
+
+        <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <div class="stats-box" id="stats-anzeige">
+            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
         </div>
     </div>
 
     <script>
+        // ==========================================
+        // ALLGEMEINE VARIABLEN
+        // ==========================================
         let mode = "add";
+        let currentSort = "name";
+        let sortDirection = 1;
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // ==========================================
+        // 📷 HIER STARTET DER KAMERA-CODE (UNANTASTBAR!)
+        // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
-                startKamera();
-            } else {
-                alert("Bitte nutze Google Chrome auf Android.");
             }
+            startKamera();
             updateListDisplay();
         });
 
@@ -69,7 +86,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera-Zugriff blockiert. Tippe auf den orangen Button zum Reparieren.");
+                alert("Kamera-Zugriff blockiert.");
             });
         }
 
@@ -79,10 +96,14 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue;
-                        let now = Date.now();
+                    if (barcodes && barcodes.length > 0) {
                         
+                        // HIER SITZT DIE ECKIGE KLAMMER NULL TODSICHER DRIN!
+                        let code = barcodes[0].rawValue;
+                        
+                        if (!code) return;
+                        
+                        let now = Date.now();
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
                         
                         lastScannedCode = code;
@@ -92,14 +113,8 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                // Speichert Name, Datum und Ort als separate Felder im Speicher ab!
-                                products[code] = { 
-                                    rawName: "", 
-                                    datum: "", 
-                                    ort: "",
-                                    fullName: "Neu: " + code, 
-                                    anzahl: 1 
-                                };
+                                // Bereitet die Schubladen für Name, Datum und Ort vor
+                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -113,10 +128,9 @@
                         localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
-                } catch (e) {
-                    console.error(e);
-                }
+                } catch (e) { console.error(e); }
             }, 200);
+        }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
 
@@ -125,39 +139,49 @@
         // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (DEINE UPGRADES!)
         // ==========================================
         
+        // Das schlaue 3-Popup-Eingabesystem mit automatischer Vorbefüllung und Merkfunktion
         function renameProduct(code) {
             let item = products[code];
 
+            // 1. Popup für den eigentlichen Namen
             let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
             if (nameInput === null) return; 
             
+            // 2. Popup für das Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
+            // 3. Popup für den Lagerort
             let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
             if (ortInput === null) return;
 
+            // Speichert die Rohdaten in das jeweilige Produkt
             item.rawName = nameInput;
             item.datum = datumInput;
             item.ort = ortInput;
 
+            // Schlaue Zusammenführung: Suchen, ob es SCHON einen anderen Barcode mit genau diesem Namen gibt
             let bereinigterNeuerName = nameInput.trim().toLowerCase();
             let gefundenerCode = Object.keys(products).find(c => 
                 c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
             );
 
             if (gefundenerCode && bereinigterNeuerName !== "") {
+                // Wenn Name existiert, schmeißen wir die gezählten Stücke auf den alten Eintrag drauf!
                 products[gefundenerCode].anzahl += item.anzahl;
                 products[gefundenerCode].datum = datumInput;
                 products[gefundenerCode].ort = ortInput;
                 
+                // Aktualisiert die Anzeige des zusammengeführten Produkts
                 let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
                 let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
                 let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
                 products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
 
+                // Löscht diesen temporären Scan-Eintrag, da er jetzt verschmolzen ist
                 delete products[code];
             } else {
+                // Keine Namensgleichheit -> Baut die Zeile einfach ganz normal zusammen
                 let anzeigeName = item.rawName || "Unbekannt";
                 let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
                 let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
@@ -180,22 +204,3 @@
         }
 
         function triggerSort(type) {
-            sortDirection = sortDirection * -1;
-            const nameBtn = document.getElementById('sort-name');
-            nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
-            updateListDisplay();
-        }
-
-        function exportBestand() {
-            if (Object.keys(products).length === 0) {
-                alert("Dein Bestand ist leer! Es gibt nichts zu exportieren.");
-                return;
-            }
-            let exportString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            navigator.clipboard.writeText(exportString).then(() => {
-                alert("📋 Bestand erfolgreich kopiert! Du kannst den Code jetzt per WhatsApp an ein anderes Handy schicken.");
-            }).catch(err => {
-                alert("Fehler beim Kopieren. Hier ist dein Code:\n\n" + exportString);
-            });
-        }
-
