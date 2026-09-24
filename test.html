@@ -174,7 +174,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // KORREKTUR: Greift jetzt wieder absolut stabil mit [0] zu!
+                        // REPARIERT: Hier steht jetzt die Null mit den eckigen Klammern felsenfest drin!
                         let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
@@ -207,4 +207,3 @@
                                 speakCombatArms("Unbelievable");
                             }
                         } else {
-                            playScanSound(mode === "remove");
