@@ -147,7 +147,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // HAARSHARF GEFIXT: Greift jetzt todsicher mit der [0] auf den Code zu!
+                        // ENDLICH HIER MIT DER NULL: Absolut identisch zur stabilen index.html!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
