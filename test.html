@@ -77,9 +77,6 @@
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
-                video.addEventListener('play', () => {
-                    scanSchleife(video);
-                });
             })
             .catch(err => {
                 alert("Kamera-Zugriff blockiert.");
@@ -93,7 +90,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // DER ULTIMATIVE FIX: Jetzt exakt mit der [0] im Code!
+                        // EXAKT REPARIERT: Holt sich wieder das erste Element aus der Liste!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -142,12 +139,19 @@
                         setTimeout(() => { isScanningBlock = false; }, 2000);
                     }
                 } catch (e) {
-                    // DER FEHLER-AIRBAG: Fängt interne Detektor-Abstürze ab! Die Kamera läuft einfach weiter!
                     console.error("Scan-Fehler abgefangen:", e);
                     isScanningBlock = false;
                 }
             }, 250);
         }
+
+        // Event-Listener für den Video-Start fix verdrahtet
+        window.addEventListener('load', () => {
+            const video = document.getElementById("webcam");
+            video.addEventListener('play', () => {
+                scanSchleife(video);
+            });
+        });
 
         function verarbeiteBestand(code, kombiKey) {
             let name = produktDatenbank[code];
@@ -210,5 +214,3 @@
                 alterNameGleich.forEach(k => {
                     produktDatenbank[k] = neuerName;
                 });
-                localStorage.setItem('produktDatenbank', JSON.stringify(produktDatenbank));
-                updateListDisplay();
