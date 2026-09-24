@@ -21,13 +21,17 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        /* Statistik-Bereich Styling */
+        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
+        .stats-box b { color: #00b300; }
     </style>
 </head>
 <body>
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, stabile Kamerasucher -->
+        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -40,6 +44,11 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <!-- Die neue Bestands-Statistik ganz unten -->
+        <div class="stats-box" id="stats-anzeige">
+            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+        </div>
     </div>
 
     <script>
@@ -50,7 +59,7 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Lädt den Bestand permanent aus dem Handyspeicher
+        // Lädt den Bestand und die Produkt-Metadaten aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         window.addEventListener('load', () => {
@@ -85,7 +94,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // FIX: Hier steht die eckige Klammer Null felsenfest!
+                        // FIX: Felsenfest mit der eckigen Klammer Null verankert!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -100,7 +109,14 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
+                                // Erstellt die Struktur mit getrennten Feldern für Name, Datum und Ort
+                                products[code] = { 
+                                    rawName: "", 
+                                    datum: "", 
+                                    ort: "", 
+                                    fullName: "Neu: " + code, 
+                                    anzahl: 1 
+                                };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -118,11 +134,55 @@
             }, 200);
         }
 
+        // Das schlaue 3-Popup-Eingabesystem mit automatischer Zusammenführung
         function renameProduct(code) {
             let item = products[code];
-            let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
-            if (nameInput === null) return;
-            item.fullName = nameInput;
+
+            // 1. Popup für den Produktnamen (Vorausgefüllt falls bereits umbenannt)
+            let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
+            if (nameInput === null) return; // Abbrechen bei Klick auf Abbrechen
+            
+            // 2. Popup für das Ablaufdatum
+            let datumInput = prompt("2. Ablaufdatum eingeben (leer lassen für keines):", item.datum || "");
+            if (datumInput === null) return;
+
+            // 3. Popup für den Lagerort
+            let ortInput = prompt("3. Lagerort eingeben (leer lassen für keinen):", item.ort || "");
+            if (ortInput === null) return;
+
+            // Speichert die Rohdaten
+            item.rawName = nameInput;
+            item.datum = datumInput;
+            item.ort = ortInput;
+
+            // Schlaue Zusammenführung: Checkt, ob es SCHON ein Produkt mit genau diesem Namen gibt
+            let bereinigterNeuerName = nameInput.trim().toLowerCase();
+            let gefundenerCode = Object.keys(products).find(c => 
+                c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
+            );
+
+            if (gefundenerCode && bereinigterNeuerName !== "") {
+                // Wenn der Name existiert, legen wir die Stückzahl auf den alten Barcode drauf!
+                products[gefundenerCode].anzahl += item.anzahl;
+                // Kopiert die Metadaten rüber
+                products[gefundenerCode].datum = datumInput;
+                products[gefundenerCode].ort = ortInput;
+                
+                // Aktualisiert den vollen Anzeigenamen des Ziel-Produkts
+                let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
+                let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
+                let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
+                products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
+
+                // Löscht den aktuellen Barcode-Eintrag, da er jetzt verschmolzen ist
+                delete products[code];
+            } else {
+                // Keine Zusammenführung nötig -> Baut die Zeile einfach normal zusammen
+                let anzeigeName = item.rawName || "Unbekannt";
+                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
+                let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
+                item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
+            }
             
             localStorage.setItem('testProducts', JSON.stringify(products));
             updateListDisplay();
@@ -142,35 +202,3 @@
         function triggerSort(type) {
             sortDirection = sortDirection * -1;
             const nameBtn = document.getElementById('sort-name');
-            nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
-            updateListDisplay();
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let keys = Object.keys(products);
-            
-            if (keys.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                return;
-            }
-            
-            keys.sort((a, b) => {
-                let itemA = products[a];
-                let itemB = products[b];
-                let nameA = itemA.fullName || "zzz";
-                let nameB = itemB.fullName || "zzz";
-                return nameA.localeCompare(nameB) * sortDirection;
-            });
-            
-            let html = "";
-            for (let i = 0; i < keys.length; i++) {
-                let code = keys[i];
-                let item = products[code];
-                html += `<div class="product-item"><div class="product-header"><span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
-            }
-            listDiv.innerHTML = html;
-        }
-    </script>
-</body>
-</html>
