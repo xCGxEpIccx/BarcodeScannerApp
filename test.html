@@ -107,33 +107,58 @@
                             if (!products[code]) {
                                 products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
-                                products[code].anzahl += 1;
-                            }
-                        } else if (mode === "remove") {
-                            if (products[code]) {
-                                products[code].anzahl -= 1;
-                                if (products[code].anzahl <= 0) delete products[code];
-                            }
-                        }
-                        
-                        localStorage.setItem('testProducts', JSON.stringify(products));
-                        updateListDisplay();
-                    }
-                } catch (e) { console.error(e); }
-            }, 200);
-        }
-        // 📷 HIER ENDET DER KAMERA-CODE
+              // ==========================================
+        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (DEINE UPGRADES!)
         // ==========================================
-
-
-        // ==========================================
-        // 📋 AB HIER FOLGT NUR NOCH DIE BESTANDS-LISTE
-        // ==========================================
+        
+        // Das schlaue 3-Popup-Eingabesystem mit automatischer Vorbefüllung und Merkfunktion
         function renameProduct(code) {
             let item = products[code];
-            let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
-            if (nameInput === null) return;
-            item.fullName = nameInput;
+
+            // 1. Popup für den eigentlichen Namen
+            let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
+            if (nameInput === null) return; 
+            
+            // 2. Popup für das Ablaufdatum
+            let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
+            if (datumInput === null) return;
+
+            // 3. Popup für den Lagerort
+            let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
+            if (ortInput === null) return;
+
+            // Speichert die Rohdaten in das jeweilige Produkt
+            item.rawName = nameInput;
+            item.datum = datumInput;
+            item.ort = ortInput;
+
+            // Schlaue Zusammenführung: Suchen, ob es SCHON einen anderen Barcode mit genau diesem Namen gibt
+            let bereinigterNeuerName = nameInput.trim().toLowerCase();
+            let gefundenerCode = Object.keys(products).find(c => 
+                c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
+            );
+
+            if (gefundenerCode && bereinigterNeuerName !== "") {
+                // Wenn Name existiert, schmeißen wir die gezählten Stücke auf den alten Eintrag drauf!
+                products[gefundenerCode].anzahl += item.anzahl;
+                products[gefundenerCode].datum = datumInput;
+                products[gefundenerCode].ort = ortInput;
+                
+                // Aktualisiert die Anzeige des zusammengeführten Produkts
+                let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
+                let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
+                let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
+                products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
+
+                // Löscht diesen temporären Scan-Eintrag, da er jetzt verschmolzen ist
+                delete products[code];
+            } else {
+                // Keine Namensgleichheit -> Baut die Zeile einfach ganz normal zusammen
+                let anzeigeName = item.rawName || "Unbekannt";
+                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
+                let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
+                item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
+            }
             
             localStorage.setItem('testProducts', JSON.stringify(products));
             updateListDisplay();
@@ -157,15 +182,53 @@
             updateListDisplay();
         }
 
+        // FUNKTION: Bestand in die Zwischenablage kopieren (Export)
+        function exportBestand() {
+            if (Object.keys(products).length === 0) {
+                alert("Dein Bestand ist leer! Es gibt nichts zu exportieren.");
+                return;
+            }
+            let exportString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
+            navigator.clipboard.writeText(exportString).then(() => {
+                alert("📋 Bestand erfolgreich kopiert! Du kannst den Code jetzt per WhatsApp an ein anderes Handy schicken.");
+            }).catch(err => {
+                alert("Fehler beim Kopieren. Hier ist dein Code:\n\n" + exportString);
+            });
+        }
+
+        // FUNKTION: Bestand von einem anderen Handy einspielen (Import)
+        function importBestand() {
+            let importString = prompt("Füge hier den kopierten Bestands-Code vom anderen Handy ein:");
+            if (!importString) return;
+            try {
+                let geladeneDaten = JSON.parse(decodeURIComponent(escape(atob(importString))));
+                if (typeof geladeneDaten === 'object') {
+                    if (confirm("Möchtest du deinen aktuellen Bestand mit diesen Daten überschreiben?")) {
+                        products = geladeneDaten;
+                        localStorage.setItem('testProducts', JSON.stringify(products));
+                        updateListDisplay();
+                        alert("✅ Bestand erfolgreich importiert und synchronisiert!");
+                    }
+                } else {
+                    alert("⚠️ Ungültiger Code!");
+                }
+            } catch (e) {
+                alert("⚠️ Fehler beim Importieren! Überprüfe den Code.");
+            }
+        }
+
         function updateListDisplay() {
             const listDiv = document.getElementById("bestand-liste");
+            const statsDiv = document.getElementById("stats-anzeige");
             let keys = Object.keys(products);
             
             if (keys.length === 0) {
                 listDiv.innerHTML = "Dein Bestand ist leer.";
+                statsDiv.innerHTML = "Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>";
                 return;
             }
             
+            // Sortiert die Liste alphabetisch
             keys.sort((a, b) => {
                 let itemA = products[a];
                 let itemB = products[b];
@@ -175,12 +238,26 @@
             });
             
             let html = "";
+            let gesamtStueckzahl = 0;
+            let verschiedeneArtikel = keys.length;
+
             for (let i = 0; i < keys.length; i++) {
                 let code = keys[i];
                 let item = products[code];
+                gesamtStueckzahl += item.anzahl;
                 html += `<div class="product-item"><div class="product-header"><span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
             }
+            
             listDiv.innerHTML = html;
+            
+            // Aktualisiert die Statistik-Box ganz unten live auf dem Schirm inklusive Export/Import Links
+            statsDiv.innerHTML = `
+                Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b>
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button onclick="exportBestand()" style="background: #333; color: white; padding: 8px; font-size: 14px; margin: 0;">Exportieren 📤</button>
+                    <button onclick="importBestand()" style="background: #333; color: white; padding: 8px; font-size: 14px; margin: 0;">Importieren 📥</button>
+                </div>
+            `;
         }
     </script>
 </body>
