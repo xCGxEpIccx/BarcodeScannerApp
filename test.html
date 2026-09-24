@@ -13,7 +13,6 @@
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
-        /* Das Zwei-Spalten-Layout für die Schalter */
         .toggle-container { display: flex; gap: 10px; margin: 5px 0 15px 0; }
         .btn-toggle-sub { flex: 1; font-size: 14px; padding: 12px 5px; background: #555; color: white; margin: 0; }
         .btn-toggle-sub.active { background: #007bff; }
@@ -33,7 +32,6 @@
             
             <video id="webcam" autoplay playsinline></video>
             
-            <!-- Die zwei neuen, aufgeteilten Buttons nebeneinander -->
             <div class="toggle-container">
                 <button class="btn-toggle-sub active" id="date-toggle-btn" onclick="toggleDateQuery()">Datum: AN ⏱️</button>
                 <button class="btn-toggle-sub active" id="location-toggle-btn" onclick="toggleLocationQuery()">Ort: AN 📍</button>
@@ -57,7 +55,6 @@
         let askForDate = true;
         let askForLocation = true;
 
-        // Versucht die Datenbank und den Bestand aus dem Handyspeicher (LocalStorage) zu laden
         let produktDatenbank = JSON.parse(localStorage.getItem('produktDatenbank')) || {
             "9120139158524": "Vollmilch 1L (Penny)",
             "9019100592002": "Ottakringer Bier 0.5L"
@@ -70,7 +67,7 @@
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
             startKamera();
-            updateListDisplay(); // Zeigt die geladenen Daten sofort an
+            updateListDisplay();
         });
 
         function startKamera() {
@@ -95,11 +92,13 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        // HIER WAR DER FEHLER: Greift jetzt wieder mit der [0] fehlerfrei zu!
+                    if (barcodes && barcodes.length > 0) {
+                        // DER ULTIMATIVE FIX: Jetzt exakt mit der [0] im Code!
                         let code = barcodes[0].rawValue;
-                        let now = Date.now();
                         
+                        if (!code) return;
+                        
+                        let now = Date.now();
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
                         
                         lastScannedCode = code;
@@ -108,7 +107,6 @@
 
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
 
-                        // Wenn der Barcode komplett neu ist
                         if (!produktDatenbank[code]) {
                             let verfuegbareNamen = Object.values(produktDatenbank);
                             let nachricht = "Neues Produkt erkannt!\n";
@@ -138,15 +136,15 @@
                             if (ortInput) ort = ortInput;
                         }
 
-                        // Kombiniert Datum und Ort als einen Info-Eintrag
                         let kombiKey = ablaufdatum + " | " + ort;
-
                         verarbeiteBestand(code, kombiKey);
                         
                         setTimeout(() => { isScanningBlock = false; }, 2000);
                     }
                 } catch (e) {
-                    console.error(e);
+                    // DER FEHLER-AIRBAG: Fängt interne Detektor-Abstürze ab! Die Kamera läuft einfach weiter!
+                    console.error("Scan-Fehler abgefangen:", e);
+                    isScanningBlock = false;
                 }
             }, 250);
         }
@@ -176,7 +174,6 @@
                 if (Object.keys(bestand[zielCode]).length === 0) delete bestand[zielCode];
             }
 
-            // Sichert den Bestand dauerhaft auf der Handy-Festplatte
             localStorage.setItem('scannerBestand', JSON.stringify(bestand));
             updateListDisplay();
         }
@@ -210,3 +207,8 @@
             let neuerName = prompt("Produktnamen ändern:", alterName);
             if (neuerName) {
                 let alterNameGleich = Object.keys(produktDatenbank).filter(k => produktDatenbank[k] === alterName);
+                alterNameGleich.forEach(k => {
+                    produktDatenbank[k] = neuerName;
+                });
+                localStorage.setItem('produktDatenbank', JSON.stringify(produktDatenbank));
+                updateListDisplay();
