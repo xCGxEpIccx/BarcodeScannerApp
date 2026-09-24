@@ -62,13 +62,13 @@
     <script>
         let mode = "add";
         let currentSort = "name"; 
+        let sortDirection = 1; // 1 = Normal (Aufsteigend), -1 = Umgekehrt (Absteigend)
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // HIER IST DER MASTER-FIX: Alles sauber in einem einzigen Lade-Block zusammengeführt!
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -93,7 +93,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera blockiert. Bitte lade die Seite in einem privaten Fenster neu.");
+                alert("Kamera blockiert.");
             });
         }
 
@@ -133,8 +133,9 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue; // DIE PERFEKTE UND STABILE ZEILE!
+                    if (barcodes && barcodes.length > 0) {
+                        // ABSOLUT GEFIXT: Holt sich jetzt todsicher das erste Element aus der Liste!
+                        let code = barcodes[0].rawValue; 
                         let now = Date.now();
                         
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
@@ -203,6 +204,6 @@
             }
         }
 
+        // Neue schlaue Wechsel-Sortierung
         function setSort(type) {
-            currentSort = type;
-            document.querySelectorAll('.btn-sort').forEach(btn => btn.classList.remove('active'));
+            if (currentSort === type) {
