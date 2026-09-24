@@ -15,9 +15,6 @@
         .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
         
-        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 12px; margin-top: 20px; width: 100%; }
-        .btn-game-mode.active { background: #007bff; }
-        
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
@@ -30,7 +27,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
+        <!-- Der originale, stabile Kamerasucher -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -43,8 +40,6 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
-
-        <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
     </div>
 
     <script>
@@ -54,10 +49,6 @@
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
-
-        let gameModeActive = false;
-        let streakCount = 0;
-        let lastStreakTime = 0;
 
         // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
@@ -87,60 +78,6 @@
             });
         }
 
-        function toggleGameMode() {
-            gameModeActive = !gameModeActive;
-            const btn = document.getElementById("game-mode-btn");
-            if (gameModeActive) {
-                btn.innerText = "🎮 Game Mode: AN";
-                btn.classList.add("active");
-                speakCombatArms("Game Mode Activated");
-            } else {
-                btn.innerText = "🎮 Game Mode: AUS";
-                btn.classList.remove("active");
-                streakCount = 0;
-            }
-        }
-
-        function speakCombatArms(text) {
-            try {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel(); 
-                    let utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US'; 
-                    utterance.pitch = 0.4;    
-                    utterance.rate = 0.85;    
-                    window.speechSynthesis.speak(utterance);
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        function playScanSound(isRemoval) {
-            try {
-                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let oscillator = audioCtx.createOscillator(); 
-                let gainNode = audioCtx.createGain();
-                oscillator.type = 'sine';
-                
-                if (isRemoval) {
-                    oscillator.frequency.setValueAtTime(450, audioCtx.currentTime); 
-                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.25);
-                } else {
-                    oscillator.frequency.setValueAtTime(1150, audioCtx.currentTime); 
-                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.start();
-                    oscillator.stop(audioCtx.currentTime + 0.12);
-                }
-            } catch (e) { console.error(e); }
-        }
-
         function scanSchleife(video) {
             setInterval(async () => {
                 if (!barcodeDetector || video.paused || video.ended) return;
@@ -148,7 +85,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // EXAKT REPARIERT UND UNBERÜHRBAR: barcodes[0].rawValue
+                        // FIX: Hier steht die eckige Klammer Null felsenfest!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -160,31 +97,6 @@
                         lastScanTime = now;
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
-
-                        if (gameModeActive && mode === "add") {
-                            if (now - lastStreakTime < 10000) {
-                                streakCount++;
-                            } else {
-                                streakCount = 1; 
-                            }
-                            lastStreakTime = now;
-
-                            if (streakCount === 1) {
-                                playScanSound(false); 
-                            } else if (streakCount === 2) {
-                                speakCombatArms("Double Kill");
-                            } else if (streakCount === 3) {
-                                speakCombatArms("Multi Kill");
-                            } else if (streakCount === 4) {
-                                speakCombatArms("Ultra Kill");
-                            } else if (streakCount === 5) {
-                                speakCombatArms("Fantastic");
-                            } else if (streakCount >= 6) {
-                                speakCombatArms("Unbelievable");
-                            }
-                        } else {
-                            playScanSound(mode === "remove");
-                        }
 
                         if (mode === "add") {
                             if (!products[code]) {
@@ -213,3 +125,52 @@
             item.fullName = nameInput;
             
             localStorage.setItem('testProducts', JSON.stringify(products));
+            updateListDisplay();
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            if(newMode === "add") {
+                document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#00b300";
+            } else {
+                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#d90000";
+            }
+        }
+
+        function triggerSort(type) {
+            sortDirection = sortDirection * -1;
+            const nameBtn = document.getElementById('sort-name');
+            nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
+            updateListDisplay();
+        }
+
+        function updateListDisplay() {
+            const listDiv = document.getElementById("bestand-liste");
+            let keys = Object.keys(products);
+            
+            if (keys.length === 0) {
+                listDiv.innerHTML = "Dein Bestand ist leer.";
+                return;
+            }
+            
+            keys.sort((a, b) => {
+                let itemA = products[a];
+                let itemB = products[b];
+                let nameA = itemA.fullName || "zzz";
+                let nameB = itemB.fullName || "zzz";
+                return nameA.localeCompare(nameB) * sortDirection;
+            });
+            
+            let html = "";
+            for (let i = 0; i < keys.length; i++) {
+                let code = keys[i];
+                let item = products[code];
+                html += `<div class="product-item"><div class="product-header"><span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
+            }
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
