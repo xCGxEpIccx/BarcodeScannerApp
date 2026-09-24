@@ -30,6 +30,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -97,7 +98,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HIER STEHT DIE REPARIERTE ECKIGE KLAMMER NULL!
+                        // ABSOLUT SICHER UND UNBERÜHRBAR VERANKERT: barcodes[0].rawValue
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -211,4 +212,3 @@
             });
         }
 
-        function importBestand() {
