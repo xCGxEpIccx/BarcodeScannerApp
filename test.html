@@ -7,15 +7,29 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; font-weight: bold; }
+        input, select { background: #222; color: white; text-align: center; }
+        button { cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         .btn-cam-restart { background: #ff9800; color: white; padding: 10px; font-size: 15px; margin-top: 5px; }
-        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 350px; overflow-y: auto; font-size: 16px; }
+        
+        /* Suchfeld Styling */
+        .search-container { position: relative; margin: 15px 0 5px 0; }
+        .search-input { text-align: left; padding-left: 45px; background: #222; color: white; border: 1px solid #444; }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; }
+        
+        /* Sortierungs-Knöpfe nebeneinander */
+        .sort-container { display: flex; gap: 8px; margin-bottom: 10px; }
+        .btn-sort { flex: 1; padding: 10px 5px; font-size: 13px; background: #333; color: #ccc; margin: 0; }
+        .btn-sort.active { background: #8a2be2; color: white; }
+        
+        .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; max-height: 350px; overflow-y: auto; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
     </style>
 </head>
 <body>
@@ -23,27 +37,40 @@
         <div id="app-screen">
             <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
             
-            <!-- Der stabile Kamera-Sucher -->
             <video id="webcam" autoplay playsinline></video>
             
-            <!-- Der neue Rettungs-Knopf, falls die Kamera blockiert -->
             <button class="btn-cam-restart" onclick="startKamera()">Kamera neu starten 📷</button>
             
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
             
-            <h3>Dein Test-Bestand:</h3>
+            <!-- Neuer Titel mit Kartonbox -->
+            <div class="section-title">📦 Bestand</div>
+            
+            <!-- Lupen-Suchfeld -->
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-box" class="search-input" placeholder="Bestand durchsuchen..." oninput="updateListDisplay()">
+            </div>
+            
+            <!-- Sortierungs-Schalter -->
+            <div class="sort-container">
+                <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
+                <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
+                <button class="btn-sort" id="sort-loc" onclick="setSort('location')">Lagerort 📍</button>
+            </div>
+            
             <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
         </div>
     </div>
 
     <script>
         let mode = "add";
+        let currentSort = "name"; // Standard-Sortierung
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         window.addEventListener('load', () => {
@@ -69,8 +96,40 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera-Zugriff blockiert. Tippe auf den orangen Button zum Reparieren.");
             });
+        }
+
+        // Kassa-Sound Generator (Erzeugt Töne live im Handy-Lautsprecher)
+        function playScanSound(isRemoval) {
+            try {
+                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                let oscillator = audioCtx.createOscillator();
+                let gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                
+                if (isRemoval) {
+                    // Dumpfer, tieferer Kassa-Ton fürs Entfernen (-)
+                    oscillator.frequency.setValueAtTime(450, audioCtx.currentTime); 
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.25);
+                } else {
+                    // Heller, sauberer Supermarkt-Biep fürs Hinzufügen (+)
+                    oscillator.frequency.setValueAtTime(1150, audioCtx.currentTime); 
+                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.12);
+                }
+            } catch (e) {
+                console.error("Audio-Fehler:", e);
+            }
         }
 
         function scanSchleife(video) {
@@ -89,17 +148,13 @@
                         lastScanTime = now;
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
+                        
+                        // Sound abspielen: Heller Ton bei add, dumpfer Ton bei remove
+                        playScanSound(mode === "remove");
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                // Speichert Name, Datum und Ort als separate Felder im Speicher ab!
-                                products[code] = { 
-                                    rawName: "", 
-                                    datum: "", 
-                                    ort: "",
-                                    fullName: "Neu: " + code, 
-                                    anzahl: 1 
-                                };
+                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -119,26 +174,21 @@
             }, 200);
         }
 
-        // Das neue, schlaue N-Button System mit leerem Startfeld & Merkfunktion
         function renameProduct(code) {
             let item = products[code];
 
-            // 1. Feld: Produktname
             let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
-            if (nameInput === null) return; // Abbrechen falls 'Abbrechen' gedrückt wurde
+            if (nameInput === null) return;
             item.rawName = nameInput;
 
-            // 2. Feld: Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben:", item.datum || "");
             if (datumInput === null) return;
             item.datum = datumInput;
 
-            // 3. Feld: Lagerort
             let ortInput = prompt("3. Lagerort eingeben:", item.ort || "");
             if (ortInput === null) return;
             item.ort = ortInput;
 
-            // Baut die Zeile für die Anzeige zusammen (verwendet Fallbacks falls ein Feld leer gelassen wurde)
             let anzeigeName = item.rawName || "Unbekannt";
             let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
             let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
@@ -155,34 +205,3 @@
                 document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
                 document.getElementById("status-label").style.color = "#00b300";
             } else {
-                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#d90000";
-            }
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let keys = Object.keys(products);
-            
-            if (keys.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                return;
-            }
-            
-            let html = "";
-            for (let i = 0; i < keys.length; i++) {
-                let code = keys[i];
-                let item = products[code];
-                
-                html += `<div class="product-item">
-                            <div class="product-header">
-                                <span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span>
-                                <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
-                            </div>
-                         </div>`;
-            }
-            listDiv.innerHTML = html;
-        }
-    </script>
-</body>
-</html>
