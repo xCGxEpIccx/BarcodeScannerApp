@@ -16,18 +16,17 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         
-        /* HIER SIND DIE ADVANCED SETTINGS VERSTECKT */
+        /* Advanced Settings Panel */
         .btn-advanced-toggle { background: #333; color: #aaa; font-size: 14px; padding: 10px; margin-top: 20px; }
         .advanced-panel { display: none; background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px dashed #444; margin-top: 10px; text-align: left; }
         
-        /* Styling für Suche & Sortierung im Panel */
         .search-container { position: relative; margin: 10px 0; }
         .search-input { width: 100%; padding: 12px 12px 12px 40px; background: #222; color: white; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; }
         .sort-container { display: flex; gap: 5px; margin: 10px 0; }
         .btn-sort { flex: 1; padding: 8px 2px; font-size: 11px; background: #2a2a2a; color: #bbb; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
-        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 10px; margin-top: 10px; }
+        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 10px; margin-top: 10px; width: 100%; }
         .btn-game-mode.active { background: #007bff; }
     </style>
 </head>
@@ -35,7 +34,6 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -44,27 +42,23 @@
         <h3>📦 Bestand</h3>
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- DER GEHEIME ADVANCED BUTTON -->
+        <!-- Advanced Toggle -->
         <button class="btn-advanced-toggle" onclick="toggleAdvancedPanel()">⚙️ Erweiterte Einstellungen (Advanced)</button>
         
-        <!-- DAS ISOLIERTE ADVANCED MENÜ -->
         <div id="advanced-panel" class="advanced-panel">
             <h4 style="margin: 0 0 10px 0; color: #ff9800; text-align: center;">Zusatz-Funktionen</h4>
             
-            <!-- Suche -->
             <div class="search-container">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-box" class="search-input" placeholder="Bestand durchsuchen..." oninput="updateListDisplay()">
             </div>
             
-            <!-- Wechsel-Sortierung -->
             <div class="sort-container">
                 <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
                 <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
                 <button class="btn-sort" id="sort-loc" onclick="setSort('location')">Lagerort 📍</button>
             </div>
 
-            <!-- Combat Arms Modus -->
             <button class="btn-game-mode" id="game-mode-btn" onclick="toggleGameMode()">🎮 Game Mode: AUS</button>
         </div>
     </div>
@@ -81,10 +75,8 @@
         let streakCount = 0;
         let lastStreakTime = 0;
 
-        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // EXAKT DIE ORIGINALE KAMERA-STARTLOGIK AUS DER STABILEN INDEX-VERSION
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -130,7 +122,7 @@
         function playScanSound(isRemoval) {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let oscillator = audioCtx.createOscillator();
+                 oscillator = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
                 oscillator.type = 'sine';
                 
@@ -162,11 +154,19 @@
                 
                 try {
                     const barcodes = await barcodeDetector.detect(video);
-                    if (barcodes.length > 0) {
-                        // MIT DER NULL AUS DER BASIS-VERSION GESICHERT!
-                        let code = barcodes[0].rawValue; 
-                        let now = Date.now();
+                    if (barcodes && barcodes.length > 0) {
                         
+                        // INTELLIGENTER WECHSEL-FIX: Erkennt automatisch Liste ODER Einzelobjekt!
+                        let code = "";
+                        if (barcodes[0] && barcodes[0].rawValue) {
+                            code = barcodes[0].rawValue;
+                        } else if (barcodes.rawValue) {
+                            code = barcodes.rawValue;
+                        }
+
+                        if (!code) return;
+                        
+                        let now = Date.now();
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
                         
                         lastScannedCode = code;
@@ -200,3 +200,4 @@
                         }
 
                         if (mode === "add") {
+                            if (!products[code]) {
