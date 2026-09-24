@@ -21,16 +21,12 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
-        
-        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
-        .stats-box b { color: #00b300; }
     </style>
 </head>
 <body>
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -43,13 +39,12 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
-
-        <div class="stats-box" id="stats-anzeige">
-            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
-        </div>
     </div>
 
     <script>
+        // ==========================================
+        // ALLGEMEINE VARIABLEN
+        // ==========================================
         let mode = "add";
         let currentSort = "name";
         let sortDirection = 1;
@@ -59,6 +54,9 @@
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // ==========================================
+        // 📷 HIER STARTET DER KAMERA-CODE
+        // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -91,7 +89,8 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // FIX: Felsenfest mit der eckigen Klammer Null verankert!
+                        
+                        // ACHTUNG HAWARA: Hier steht die unberührbare eckige Klammer Null!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -106,13 +105,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { 
-                                    rawName: "", 
-                                    datum: "", 
-                                    ort: "", 
-                                    fullName: "Neu: " + code, 
-                                    anzahl: 1 
-                                };
+                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -129,45 +122,18 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
+        // 📷 HIER ENDET DER KAMERA-CODE
+        // ==========================================
 
+
+        // ==========================================
+        // 📋 AB HIER FOLGT NUR NOCH DIE BESTANDS-LISTE
+        // ==========================================
         function renameProduct(code) {
             let item = products[code];
-
-            let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
+            let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
             if (nameInput === null) return;
-            
-            let datumInput = prompt("2. Ablaufdatum eingeben (leer lassen für keines):", item.datum || "");
-            if (datumInput === null) return;
-
-            let ortInput = prompt("3. Lagerort eingeben (leer lassen für keinen):", item.ort || "");
-            if (ortInput === null) return;
-
-            item.rawName = nameInput;
-            item.datum = datumInput;
-            item.ort = ortInput;
-
-            let bereinigterNeuerName = nameInput.trim().toLowerCase();
-            let gefundenerCode = Object.keys(products).find(c => 
-                c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
-            );
-
-            if (gefundenerCode && bereinigterNeuerName !== "") {
-                products[gefundenerCode].anzahl += item.anzahl;
-                products[gefundenerCode].datum = datumInput;
-                products[gefundenerCode].ort = ortInput;
-                
-                let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
-                let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
-                let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
-                products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
-
-                delete products[code];
-            } else {
-                let anzeigeName = item.rawName || "Unbekannt";
-                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
-                let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
-                item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
-            }
+            item.fullName = nameInput;
             
             localStorage.setItem('testProducts', JSON.stringify(products));
             updateListDisplay();
@@ -193,12 +159,10 @@
 
         function updateListDisplay() {
             const listDiv = document.getElementById("bestand-liste");
-            const statsDiv = document.getElementById("stats-anzeige");
             let keys = Object.keys(products);
             
             if (keys.length === 0) {
                 listDiv.innerHTML = "Dein Bestand ist leer.";
-                statsDiv.innerHTML = "Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>";
                 return;
             }
             
@@ -211,7 +175,13 @@
             });
             
             let html = "";
-            let gesamtStueckzahl = 0;
-            let verschiedeneArtikel = keys.length;
-
             for (let i = 0; i < keys.length; i++) {
+                let code = keys[i];
+                let item = products[code];
+                html += `<div class="product-item"><div class="product-header"><span>• <b>${item.fullName}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
+            }
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
