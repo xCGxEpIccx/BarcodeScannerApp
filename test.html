@@ -21,7 +21,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, funktionierende Kamerasucher aus der Basis -->
+        <!-- Der originale, stabile Kamerasucher -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -37,7 +37,7 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Lädt den Bestand und die Namen permanent aus dem Handyspeicher (LocalStorage)
+        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         window.addEventListener('load', () => {
@@ -47,7 +47,7 @@
             } else {
                 alert("Bitte nutze Google Chrome auf Android.");
             }
-            updateListDisplay(); // Zeigt gespeicherte Sachen sofort an!
+            updateListDisplay();
         });
 
         function startKamera() {
@@ -74,7 +74,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue; // Exakt der originale funktionierende Befehl!
+                        let code = barcodes[0].rawValue; // Stabil verankert!
                         let now = Date.now();
                         
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
@@ -97,7 +97,6 @@
                             }
                         }
                         
-                        // Sichert die Daten sofort im Smartphone-Speicher
                         localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
@@ -107,15 +106,21 @@
             }, 200);
         }
 
-        // Der lila N-Knopf: Ändert Namen, Datum oder Ort direkt in der Liste!
+        // Das neue, schlaue N-Button System: Fragt dich alles nacheinander ab!
         function renameProduct(code) {
-            let aktuellerName = products[code].name;
-            let neuerName = prompt("Produkt-Infos ändern (z.B. Gösser - 15.10. - Keller):", aktuellerName);
-            if (neuerName) {
-                products[code].name = neuerName;
-                localStorage.setItem('testProducts', JSON.stringify(products));
-                updateListDisplay();
-            }
+            let alterName = products[code].name;
+            
+            let nameInput = prompt("1. Name des Produkts eingeben:", alterName);
+            if (!nameInput) return; // Abbrechen falls leer
+            
+            let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", "Kein Datum");
+            let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", "Kein Ort");
+            
+            // Baut die Zeile automatisch schön lesbar zusammen
+            products[code].name = `${nameInput} | ⏱️ ${datumInput} | 📍 ${ortInput}`;
+            
+            localStorage.setItem('testProducts', JSON.stringify(products));
+            updateListDisplay();
         }
 
         function setMode(newMode) {
@@ -145,7 +150,7 @@
                 
                 html += `<div class="product-item">
                             <div class="product-header">
-                                <span>• <b>${item.name}</b> | Anzahl: <b>${item.anzahl}</b></span>
+                                <span>• <b>${item.name}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span>
                                 <button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button>
                             </div>
                          </div>`;
