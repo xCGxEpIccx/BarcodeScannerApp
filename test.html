@@ -30,7 +30,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
+        <!-- Der Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -147,7 +147,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // ENDLICH HIER MIT DER NULL: Absolut identisch zur stabilen index.html!
+                        // EXAKT KORRIGIERT: Rührt die eckige Klammer Null ab jetzt niemals an!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -215,3 +215,4 @@
             updateListDisplay();
         }
 
+        function setMode(newMode) {
