@@ -14,12 +14,10 @@
         .btn-remove { background: #d90000; color: white; }
         .btn-cam-restart { background: #ff9800; color: white; padding: 10px; font-size: 15px; margin-top: 5px; }
         
-        /* Suchfeld Styling */
         .search-container { position: relative; margin: 15px 0 5px 0; }
         .search-input { text-align: left; padding-left: 45px; background: #222; color: white; border: 1px solid #444; }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; }
         
-        /* Sortierungs-Knöpfe nebeneinander */
         .sort-container { display: flex; gap: 8px; margin-bottom: 10px; }
         .btn-sort { flex: 1; padding: 10px 5px; font-size: 13px; background: #333; color: #ccc; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
@@ -44,16 +42,13 @@
             <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
             
-            <!-- Neuer Titel mit Kartonbox -->
             <div class="section-title">📦 Bestand</div>
             
-            <!-- Lupen-Suchfeld -->
             <div class="search-container">
                 <span class="search-icon">🔍</span>
                 <input type="text" id="search-box" class="search-input" placeholder="Bestand durchsuchen..." oninput="updateListDisplay()">
             </div>
             
-            <!-- Sortierungs-Schalter -->
             <div class="sort-container">
                 <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
                 <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
@@ -66,20 +61,25 @@
 
     <script>
         let mode = "add";
-        let currentSort = "name"; // Standard-Sortierung
+        let currentSort = "name"; 
         let lastScannedCode = "";
         let lastScanTime = 0;
         let barcodeDetector;
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // HIER IST DER MASTER-FIX: Alles sauber in einem einzigen Lade-Block zusammengeführt!
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
-                startKamera();
-            } else {
-                alert("Bitte nutze Google Chrome auf Android.");
             }
+            
+            const video = document.getElementById("webcam");
+            video.addEventListener('play', () => {
+                scanSchleife(video);
+            });
+
+            startKamera();
             updateListDisplay();
         });
 
@@ -90,16 +90,13 @@
             .then(stream => {
                 const video = document.getElementById("webcam");
                 video.srcObject = stream;
-                video.addEventListener('play', () => {
-                    scanSchleife(video);
-                });
             })
             .catch(err => {
                 console.error(err);
+                alert("Kamera blockiert. Bitte lade die Seite in einem privaten Fenster neu.");
             });
         }
 
-        // Kassa-Sound Generator (Erzeugt Töne live im Handy-Lautsprecher)
         function playScanSound(isRemoval) {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -109,7 +106,6 @@
                 oscillator.type = 'sine';
                 
                 if (isRemoval) {
-                    // Dumpfer, tieferer Kassa-Ton fürs Entfernen (-)
                     oscillator.frequency.setValueAtTime(450, audioCtx.currentTime); 
                     gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
@@ -118,7 +114,6 @@
                     oscillator.start();
                     oscillator.stop(audioCtx.currentTime + 0.25);
                 } else {
-                    // Heller, sauberer Supermarkt-Biep fürs Hinzufügen (+)
                     oscillator.frequency.setValueAtTime(1150, audioCtx.currentTime); 
                     gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
@@ -139,7 +134,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes.length > 0) {
-                        let code = barcodes[0].rawValue;
+                        let code = barcodes[0].rawValue; // DIE PERFEKTE UND STABILE ZEILE!
                         let now = Date.now();
                         
                         if (code === lastScannedCode && (now - lastScanTime) < 3000) return;
@@ -148,8 +143,6 @@
                         lastScanTime = now;
                         
                         if (window.navigator.vibrate) window.navigator.vibrate(100);
-                        
-                        // Sound abspielen: Heller Ton bei add, dumpfer Ton bei remove
                         playScanSound(mode === "remove");
 
                         if (mode === "add") {
@@ -205,3 +198,11 @@
                 document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
                 document.getElementById("status-label").style.color = "#00b300";
             } else {
+                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#d90000";
+            }
+        }
+
+        function setSort(type) {
+            currentSort = type;
+            document.querySelectorAll('.btn-sort').forEach(btn => btn.classList.remove('active'));
