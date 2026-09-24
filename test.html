@@ -7,18 +7,15 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        input, button, select { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; font-weight: bold; }
-        input, select { background: #222; color: white; text-align: center; }
-        button { cursor: pointer; }
+        button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         .btn-add { background: #00b300; color: white; }
         .btn-remove { background: #d90000; color: white; }
         
-        /* Sortierungs-Layout */
-        .sort-container { display: flex; gap: 5px; margin: 15px 0 10px 0; }
-        .btn-sort { flex: 1; padding: 10px 2px; font-size: 12px; background: #2a2a2a; color: #bbb; margin: 0; }
+        .sort-container { display: flex; gap: 8px; margin: 15px 0 10px 0; }
+        .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
         
-        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 12px; margin-top: 10px; width: 100%; }
+        .btn-game-mode { background: #444; color: white; font-size: 14px; padding: 12px; margin-top: 20px; width: 100%; }
         .btn-game-mode.active { background: #007bff; }
         
         video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
@@ -33,7 +30,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Die originale Kamera, die sofort von selbst anspringt -->
+        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -41,10 +38,9 @@
         
         <div class="section-title">📦 Bestand</div>
         
+        <!-- Sortierungs-Knöpfe: Sortieren NUR bei Klick! -->
         <div class="sort-container">
-            <button class="btn-sort active" id="sort-name" onclick="setSort('name')">A-Z 🔤</button>
-            <button class="btn-sort" id="sort-date" onclick="setSort('date')">Ablaufdatum ⏱️</button>
-            <button class="btn-sort" id="sort-loc" onclick="setSort('location')">Lagerort 📍</button>
+            <button class="btn-sort active" id="sort-name" onclick="triggerSort('name')">A-Z 🔤</button>
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
@@ -64,9 +60,10 @@
         let streakCount = 0;
         let lastStreakTime = 0;
 
+        // Lädt den Bestand permanent aus dem Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
-        // EXAKT DIE IDENTISCHE START-STRUKTUR AUS DEINER STABILEN INDEX-DATEI
+        // EXAKT DIE IDENTISCHE START-STRUKTUR AUS DEINER FUNKTIONIERENDEN INDEX-DATEI
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
@@ -153,8 +150,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        
-                        // MIT DER NULL AUS DER STABILEN VERSION ABGESICHERT
+                        // REPARIERT: Greift mit der Null absolut identisch zur index.html zu!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -194,7 +190,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
+                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -208,3 +204,10 @@
                         localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
+                } catch (e) { console.error(e); }
+            }, 200);
+        }
+
+        function renameProduct(code) {
+            let item = products[code];
+            let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
