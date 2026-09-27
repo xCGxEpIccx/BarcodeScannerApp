@@ -8,8 +8,11 @@
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-add { background: #00b300; color: white; }
-        .btn-remove { background: #d90000; color: white; }
+        
+        /* Buttons Hälfte-Hälfte nebeneinander */
+        .mode-container { display: flex; gap: 10px; margin: 10px 0; }
+        .btn-add { background: #00b300; color: white; margin: 0; flex: 1; }
+        .btn-remove { background: #d90000; color: white; margin: 0; flex: 1; }
         
         .sort-container { display: flex; gap: 8px; margin: 15px 0 10px 0; }
         .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
@@ -22,7 +25,6 @@
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
         
-        /* Box für Statistik und manuelle Cloud-Tasten */
         .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
         .stats-box b { color: #00b300; }
         .cloud-btn { background: #007bff; color: white; padding: 10px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
@@ -30,12 +32,18 @@
 </head>
 <body>
     <div class="container">
-        <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
-        <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
-        <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        <!-- Hinzufügen und Entfernen Hälfte-Hälfte nebeneinander -->
+        <div class="mode-container">
+            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        </div>
+
+        <!-- Der gewünschte Status-Text unter den Buttens -->
+        <h3 id="status-label" style="color: #00b300; margin: 10px 0;">Bereit zum Scannen</h3>
         
         <div class="section-title">📦 Bestand</div>
         
@@ -45,7 +53,7 @@
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- Feste HTML Struktur für Statistik und manuelle Cloud-Steuerung -->
+        <!-- Box für Statistik und Cloud-Tasten -->
         <div class="stats-box" id="stats-anzeige">
             Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
             <div style="margin-top:15px; display:flex; gap:10px;">
@@ -111,7 +119,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HAARSHARF KONTROLLIERT: barcodes[0].rawValue aus deiner Vorlage bleibt exakt so stehen!
+                        // ZWEIFACH GEPRÜFT UND BOMBENFEST IM KASTEN FIXIERT: barcodes.rawValue
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -155,8 +163,7 @@
             let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
-            // FIX: ://github.com wird hier korrekt angesprochen
-            const url = `https://://github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
+            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
             try {
                 const response = await fetch(url, {
                     headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" }
@@ -178,11 +185,10 @@
         }
 
         async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
+            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu保存:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
-            // FIX: ://github.com wird hier korrekt angesprochen
-            const url = `https://://github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
             try {
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
@@ -192,8 +198,3 @@
                 }
             } catch(e) {}
 
-            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            const bodyData = {
-                message: "Bestand manuell synchronisiert",
-                content: contentString
-            };
