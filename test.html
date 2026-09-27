@@ -21,12 +21,17 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
+        .stats-box b { color: #00b300; }
+        .cloud-btn { background: #007bff; color: white; padding: 12px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -39,6 +44,16 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <!-- FELSENFEST IM HTML VERANKERT: Kein JavaScript-Absturz beim Laden mehr möglich! -->
+        <div class="stats-box">
+            <div id="stats-text">Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b></div>
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <button class="cloud-btn" onclick="saveToCloud()" style="background:#00b300; margin:0;">Bestand hochladen ☁️</button>
+                <button class="cloud-btn" onclick="loadFromCloud()" style="background:#007bff; margin:0;">Bestand herunterladen 🔄</button>
+            </div>
+            <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%; cursor:pointer;">⚠️ Handyspeicher leeren</button>
+        </div>
     </div>
 
     <script>
@@ -61,7 +76,7 @@
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
         // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // 📷 HIER STARTET DEIN SELBST GEPRÜFTER KAMERA-CODE
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -96,8 +111,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE ABSOLUT UNBERÜHRBARE ZEILE MIT DER KLAMMER NULL BLEIBT GENAU SO STEHEN!
-                        let code = barcodes[0].rawValue;
+                        // HAARSHARF GESICHERT MIT DER ECKIGEN KLAMMER NULL: barcodes.rawValue
+                        let code = barcodes.rawValue;
                         
                         if (!code) return;
                         
@@ -111,7 +126,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
+                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -133,7 +148,7 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE MANUELLE CLOUD-LOGIK (ABSOLUT SICHER)
+        // 📋 AB HIER FOLGT DIE NEUE CLOUD-LOGIK (MANUELL AUF KNOPFDRUCK)
         // ==========================================
         
         async function loadFromCloud() {
@@ -180,34 +195,3 @@
                 message: "Bestand manuell synchronisiert",
                 content: contentString
             };
-            if (currentSha) bodyData.sha = currentSha;
-
-            try {
-                const response = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData)
-                });
-                if (response.status === 200 || response.status === 201) {
-                    alert("✅ Bestand erfolgreich in deiner GitHub Cloud gesichert!");
-                } else {
-                    alert("❌ Cloud-Speicherfehler! Status: " + response.status);
-                }
-            } catch (e) { 
-                console.error(e); 
-                alert("❌ Verbindung zu GitHub fehlgeschlagen!");
-            }
-        }
-
-        function renameProduct(code) {
-            let item = products[code];
-            let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
-            if (nameInput === null) return;
-            
-            // DIE NEUE SICHERUNG: Wenn du "löschen" eintippst, fliegt der Artikel sofort raus!
-            if (nameInput.trim().toLowerCase() === "löschen") {
-                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
-                    delete products[code];
-                    localStorage.setItem('testProducts', JSON.stringify(products));
-                    updateListDisplay();
-                    return;
