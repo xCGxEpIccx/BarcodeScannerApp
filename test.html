@@ -124,7 +124,7 @@
         }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
-        // ==========================================
+              // ==========================================
         // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & LÖSCH-FUNKTION)
         // ==========================================
         
@@ -133,6 +133,9 @@
         const FILE_PATH = "bestand.json";
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
         let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "false";
+
+        // Die Variable wird hier NICHT neu mit let erschaffen, um den Absturz zu verhindern!
+        products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         async function loadFromCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
@@ -144,8 +147,7 @@
                     const data = await response.json();
                     const content = decodeURIComponent(escape(atob(data.content)));
                     products = JSON.parse(content);
-                } else {
-                    products = {};
+                    localStorage.setItem('testProducts', JSON.stringify(products));
                 }
                 updateListDisplay();
             } catch (e) {
@@ -194,6 +196,7 @@
                     if (cloudAuthenticated === "true") {
                         saveToCloud();
                     } else {
+                        localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
                     return;
@@ -236,6 +239,7 @@
             if (cloudAuthenticated === "true") {
                 saveToCloud();
             } else {
+                localStorage.setItem('testProducts', JSON.stringify(products));
                 updateListDisplay();
             }
         }
@@ -322,12 +326,3 @@
                 let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
                 if (userPass === "bier123") {
                     localStorage.setItem('cloud_auth_ok', "true");
-                    cloudAuthenticated = "true";
-                    loadFromCloud();
-                } else {
-                    alert("❌ Falsches Passwort! Seite läuft im Offline-Modus.");
-                    document.getElementById("bestand-liste").innerHTML = "Offline-Modus aktiv.";
-                }
-            } else {
-                loadFromCloud();
-       
