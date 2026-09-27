@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner Pro - REIN LOKAL</title>
+    <title>Barcode Scanner Pro - FEATURE TEST</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         
-        /* Buttons Hälfte-Hälfte nebeneinander */
         .mode-container { display: flex; gap: 10px; margin: 10px 0; }
         .btn-add { background: #00b300; color: white; margin: 0; flex: 1; }
         .btn-remove { background: #d90000; color: white; margin: 0; flex: 1; }
@@ -23,7 +22,6 @@
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
     </style>
 </head>
 <body>
@@ -42,8 +40,10 @@
 
         <h3 id="status-label" style="color: #00b300; margin: 10px 0;">Bereit zum Scannen</h3>
         
-        <div class="section-title">📦 Lokaler Bestand</div>
+        <h3 style="margin-top:20px; text-align:left;">📦 Lokaler Bestand:</h3>
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+        
+        <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 20px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Liste komplett löschen</button>
     </div>
 
     <script>
@@ -88,8 +88,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ZEILE 66: DREIFACH GEPRÜFT UND BOMBENFEST MIT NULL FIXIERT!
-                        let code = barcodes.[0]rawValue;
+                        // DEINE REPARIERTE UNBERÜHRBARE ECKIGE KLAMMER NULL!
+                        let code = barcodes[0].rawValue;
                         
                         if (!code) return;
                         
@@ -103,6 +103,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
+                                // Startet komplett leer ohne vordefinierten Text
                                 products[code] = { rawName: "", datum: "", anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
@@ -121,13 +122,16 @@
             }, 250);
         }
 
+        // Das 2-Popup-System (Name & Ablaufdatum) mit leerem Startfeld & Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code];
             if (!item) return;
 
+            // Fenster 1: Produktname (Startet absolut leer, wenn noch nichts eingetragen wurde)
             let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum Entfernen):", item.rawName || "");
             if (nameInput === null) return; 
             
+            // LÖSCH-SICHERUNG
             if (nameInput.trim().toLowerCase() === "löschen") {
                 if (confirm("Möchtest du diesen Artikel wirklich komplett löschen?")) {
                     delete products[code];
@@ -137,6 +141,7 @@
                 }
             }
             
+            // Fenster 2: Ablaufdatum (Startet ebenfalls absolut leer)
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
@@ -158,6 +163,14 @@
             }
         }
 
+        function clearLocalBestand() {
+            if (confirm("Möchtest du die Liste wirklich komplett leeren?")) {
+                localStorage.removeItem('minimalProducts');
+                products = {};
+                updateListDisplay();
+            }
+        }
+
         function updateListDisplay() {
             const listDiv = document.getElementById("bestand-liste");
             if (!listDiv) return;
@@ -172,11 +185,12 @@
             for (let i = 0; i < keys.length; i++) {
                 let code = keys[i];
                 let item = products[code];
-                if (item) {
-                    let anzeigeName = item.rawName ? item.rawName : "Neu gescannt: " + code;
-                    let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
-                    html += `<div class="product-item"><div class="product-header"><span>• <b>${anzeigeName}${anzeigeDatum}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
-                }
+                
+                // Erstellt die Textanzeige: Wenn kein Name da ist, wird der Barcode gezeigt
+                let anzeigeName = item.rawName ? item.rawName : "Neu gescannt: " + code;
+                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
+                
+                html += `<div class="product-item"><div class="product-header"><span>• <b>${anzeigeName}${anzeigeDatum}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
             }
             listDiv.innerHTML = html;
         }
