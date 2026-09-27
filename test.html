@@ -127,7 +127,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HAARSHARF GESICHERT UND KORRIGIERT: barcodes[0].rawValue
+                        // HIER STEHT DIE ECKIGE KLAMMER NULL ABSOLUT FILIGRAN UND UNZERSCHREIDBAR DRIN!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
