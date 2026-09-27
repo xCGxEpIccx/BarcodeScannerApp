@@ -21,12 +21,17 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
+        
+        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
+        .stats-box b { color: #00b300; }
+        .cloud-btn { background: #007bff; color: white; padding: 10px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -39,11 +44,15 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <div class="stats-box" id="stats-anzeige">
+            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+        </div>
     </div>
 
     <script>
         // ==========================================
-        // ALLGEMEINE VARIABLEN
+        // ALLGEMEINE VARIABLEN (EXAKT AUS INDEX)
         // ==========================================
         let mode = "add";
         let currentSort = "name";
@@ -52,10 +61,17 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
+        // Startet felsenfest mit dem stabilen Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // Cloud-Konfiguration
+        const GITHUB_USER = "xcgxepiccx";
+        const GITHUB_REPO = "BarcodeScannerApp";
+        const FILE_PATH = "bestand.json";
+        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
+
         // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // 📷 HIER STARTET DER KAMERA-CODE (EXAKT AUS INDEX)
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -90,7 +106,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ACHTUNG HAWARA: Hier steht die unberührbare eckige Klammer Null!
+                        // ABSOLUT STRÄFLICH UND ZWEIFACH KONTROLLIERT: barcodes[0].rawValue
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -105,7 +121,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
+                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -122,37 +138,18 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
-        // 📷 HIER ENDET DER KAMERA-CODE
+        // 📷 HIER ENDET DER KAMERA-CODE (UNBERÜHRT VOM INDEX)
         // ==========================================
-        // ==========================================
-               // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE CLOUD- & PRODUKT-LOGIK (ABSOLUT STABIL & GETRENNT)
-        // ==========================================
-        const GITHUB_USER = "xcgxepiccx";
-        const GITHUB_REPO = "BarcodeScannerApp";
-        const FILE_PATH = "bestand.json";
-        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
-        let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "";
 
-        function initCloudSystem() {
-            if (cloudAuthenticated !== "true" && cloudAuthenticated !== "false") {
-                let userPass = prompt("Bitte gib das Bestand-Passwort ein (Tippe 'abbrechen' für Offline):");
-                if (userPass === "bier123") {
-                    localStorage.setItem('cloud_auth_ok', "true");
-                    cloudAuthenticated = "true";
-                    loadFromCloud();
-                } else {
-                    localStorage.setItem('cloud_auth_ok', "false");
-                    cloudAuthenticated = "false";
-                    alert("Offline-Modus aktiv.");
-                    updateListDisplay();
-                }
-            } else if (cloudAuthenticated === "true") {
-                loadFromCloud();
-            }
-        }
 
+        // ==========================================
+        // 📋 AB HIER FOLGT DIE NEUE PRODUKT- & MANUELLE CLOUD-LOGIK
+        // ==========================================
+        
         async function loadFromCloud() {
+            let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
+            if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
+
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
             try {
                 const response = await fetch(url, {
@@ -163,15 +160,21 @@
                     const content = decodeURIComponent(escape(atob(data.content)));
                     products = JSON.parse(content);
                     localStorage.setItem('testProducts', JSON.stringify(products));
+                    updateListDisplay();
+                    alert("✅ Bestand erfolgreich aus der GitHub-Cloud geladen!");
+                } else {
+                    alert("⚠️ Die Datei bestand.json wurde auf GitHub nicht gefunden oder ist leer.");
                 }
-                updateListDisplay();
             } catch (e) { 
                 console.error(e); 
-                updateListDisplay();
+                alert("❌ Verbindungsfehler zur Cloud!");
             }
         }
 
         async function saveToCloud() {
+            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
+            if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
+
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
             try {
@@ -184,147 +187,21 @@
 
             const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
             const bodyData = {
-                message: "Bestand aktualisiert",
+                message: "Bestand manuell synchronisiert",
                 content: contentString
             };
             if (currentSha) bodyData.sha = currentSha;
 
             try {
-                await fetch(url, {
+                const response = await fetch(url, {
                     method: "PUT",
                     headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
                     body: JSON.stringify(bodyData)
                 });
-                // Zeigt die Änderung sofort lokal an, ohne auf die Server-Antwort zu warten!
-                updateListDisplay();
-            } catch (e) { console.error(e); }
-        }
-
-        function renameProduct(code) {
-            let item = products[code] || { rawName: "", datum: "", ort: "" };
-
-            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
-            if (nameInput === null) return; 
-            
-            if (nameInput.trim().toLowerCase() === "löschen") {
-                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
-                    delete products[code];
-                    localStorage.setItem('testProducts', JSON.stringify(products));
-                    updateListDisplay();
-                    if (cloudAuthenticated === "true") {
-                        saveToCloud();
-                    }
-                    return;
+                if (response.status === 200 || response.status === 201) {
+                    alert("✅ Bestand erfolgreich in deiner GitHub Cloud gesichert!");
+                } else {
+                    alert("❌ Cloud-Speicherfehler! Status: " + response.status);
                 }
-            }
-            
-            let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
-            if (datumInput === null) return;
-
-            let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
-            if (ortInput === null) return;
-
-            item.rawName = nameInput;
-            item.datum = datumInput;
-            item.ort = ortInput;
-
-            let bereinigterNeuerName = nameInput.trim().toLowerCase();
-            let gefundenerCode = Object.keys(products).find(c => 
-                c !== code && products[c].rawName && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
-            );
-
-            if (gefundenerCode && bereinigterNeuerName !== "") {
-                products[gefundenerCode].anzahl += item.anzahl;
-                products[gefundenerCode].datum = datumInput;
-                products[gefundenerCode].ort = ortInput;
-                
-                let anzeigName = products[gefundenerCode].rawName || "Unbekannt";
-                let anzeigDatum = products[gefundenerCode].datum ? " | ⏱️ " + products[gefundenerCode].datum : "";
-                let anzeigOrt = products[gefundenerCode].ort ? " | 📍 " + products[gefundenerCode].ort : "";
-                products[gefundenerCode].fullName = anzeigName + anzeigDatum + anzeigOrt;
-
-                delete products[code];
-            } else {
-                let anzeigeName = item.rawName || "Unbekannt";
-                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
-                let anzeigeOrt = item.ort ? " | 📍 " + item.ort : "";
-                item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
-            }
-            
-            localStorage.setItem('testProducts', JSON.stringify(products));
-            updateListDisplay(); // Aktualisiert die Anzeige SOFORT auf dem Bildschirm!
-
-            if (cloudAuthenticated === "true") {
-                saveToCloud(); // Synchronisiert im Hintergrund lautlos mit der Cloud
-            }
-        }
-
-        function clearLocalProductsOnly() {
-            if (confirm("⚠️ Möchtest du wirklich alle Produkt-Altlasten aus dem lokalen Speicher deines Handys löschen?")) {
-                localStorage.removeItem('testProducts');
-                products = {};
-                updateListDisplay();
-                if (cloudAuthenticated === "true") {
-                    saveToCloud();
-                }
-                alert("✅ Speicher wurde auf 0 gesetzt!");
-            }
-        }
-
-        function setMode(newMode) {
-            mode = newMode;
-            if(newMode === "add") {
-                document.getElementById("status-label").innerText = "TEST-MODUS | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#00b300";
-            } else {
-                document.getElementById("status-label").innerText = "TEST-MODUS | Entfernen (-) | Bereit zum Scannen";
-                document.getElementById("status-label").style.color = "#d90000";
-            }
-        }
-
-        function triggerSort(type) {
-            sortDirection = sortDirection * -1;
-            const nameBtn = document.getElementById('sort-name');
-            nameBtn.innerText = sortDirection === 1 ? "A-Z 🔤" : "Z-A 🔤";
-            updateListDisplay();
-        }
-
-        function updateListDisplay() {
-            const listDiv = document.getElementById("bestand-liste");
-            let keys = Object.keys(products);
-            
-            let statsBox = document.getElementById("stats-anzeige");
-            if (!statsBox) {
-                statsBox = document.createElement("div");
-                statsBox.id = "stats-anzeige";
-                statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
-                document.querySelector('.container').appendChild(statsBox);
-            }
-
-            if (keys.length === 0) {
-                listDiv.innerHTML = "Dein Bestand ist leer.";
-                let cloudStatusText = (cloudAuthenticated === "true") ? "☁️ Cloud-Synchronisierung aktiv" : (cloudAuthenticated === "false" ? "⚠️ Offline-Modus aktiv" : "Lade Cloud-Status...");
-                statsBox.innerHTML = `Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
-                <br><span style="font-size:11px; color:${cloudAuthenticated === "true" ? "#00b300" : "#ff9800"};">${cloudStatusText}</span>
-                <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Lokalen Bestand leeren</button>`;
-                return;
-            }
-            
-            keys.sort((a, b) => {
-                let itemA = products[a];
-                let itemB = products[b];
-                let nameA = (itemA && itemA.fullName) ? itemA.fullName : "zzz";
-                let nameB = (itemB && itemB.fullName) ? itemB.fullName : "zzz";
-                return nameA.localeCompare(nameB) * sortDirection;
-            });
-            
-            let html = "";
-            let gesamtStueckzahl = 0;
-            let verschiedeneArtikel = keys.length;
-
-            for (let i = 0; i < keys.length; i++) {
-                let code = keys[i];
-                let item = products[code];
-                if (item) {
-                    gesamtStueckzahl += (item.anzahl || 0);
-                    let anzeigeText = item.fullName || "Neu: " + code;
+            } catch (e) { 
+                console.error(e); 
