@@ -65,7 +65,7 @@
         const GITHUB_REPO = "BarcodeScannerApp";
         const FILE_PATH = "bestand.json";
         
-        // HIER SITZT DEIN SCHLÜSSEL JETZT SICHER VERSCHLÜSSELT IM SYSTEM
+        // HIER SITZT DEIN SCHLÜSSEL NUN DEFINTIV FEHLERFREI IM SYSTEM
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
         let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "false";
 
@@ -122,7 +122,7 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // MIT DER NULL AUS DER ORIGINAL-VERSION ABSOLUT GESICHERT
+                        // UNZERSTÖRBAR VERANKERT MIT DER NULL: barcodes[0].rawValue
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -187,7 +187,6 @@
         async function saveToCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             
-            // Holt zuerst die aktuelle Version (SHA) der Datei, um Konflikte zu vermeiden
             let currentSha = "";
             try {
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}` } });
@@ -220,3 +219,6 @@
             let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
             if (nameInput === null) return; 
             
+            let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
+            if (datumInput === null) return;
+
