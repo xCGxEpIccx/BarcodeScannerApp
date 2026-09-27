@@ -70,8 +70,8 @@
         const FILE_PATH = "bestand.json";
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
-        // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE (EXAKT AUS INDEX)
+       // ==========================================
+        // 📷 HIER STARTET DER KAMERA-CODE
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -106,7 +106,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ABSOLUT STRÄFLICH UND ZWEIFACH KONTROLLIERT: barcodes[0].rawValue
+                        // ACHTUNG HAWARA: Hier steht die unberührbare eckige Klammer Null!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -121,7 +121,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
+                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -138,7 +138,7 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
-        // 📷 HIER ENDET DER KAMERA-CODE (UNBERÜHRT VOM INDEX)
+        // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
 
 
