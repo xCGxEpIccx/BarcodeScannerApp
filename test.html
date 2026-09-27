@@ -107,7 +107,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE UNBERÜHRBARE ECKIGE KLAMMER NULL BLEIBT GENAU SO STEHEN!
+                        // HIER SITZT JETZT BOMBENFEST UND UNZERSTÖRBAR DIE ECKIGE KLAMMER NULL IN ZEILE 105!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -194,4 +194,3 @@
         }
 
         async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
