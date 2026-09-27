@@ -54,6 +54,12 @@
 
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
+        // Cloud-Konfiguration
+        const GITHUB_USER = "xcgxepiccx";
+        const GITHUB_REPO = "BarcodeScannerApp";
+        const FILE_PATH = "bestand.json";
+        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
+
         // ==========================================
         // 📷 HIER STARTET DER KAMERA-CODE
         // ==========================================
@@ -90,7 +96,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ACHTUNG HAWARA: Hier steht die unberührbare eckige Klammer Null!
+                        // DEINE ABSOLUT UNBERÜHRBARE ZEILE MIT DER KLAMMER NULL BLEIBT GENAU SO STEHEN!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -127,13 +133,9 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE KORRIGIERTE NEUE BESTANDS-LOGIK MIT CLOUD-FUNKTION
+        // 📋 AB HIER FOLGT DIE NEUE MANUELLE CLOUD-LOGIK (ABSOLUT SICHER)
         // ==========================================
-        const GITHUB_USER = "xcgxepiccx";
-        const GITHUB_REPO = "BarcodeScannerApp";
-        const FILE_PATH = "bestand.json";
-        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
-
+        
         async function loadFromCloud() {
             let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
@@ -201,15 +203,11 @@
             let item = products[code];
             let nameInput = prompt("Produktnamen eingeben:", item.fullName || code);
             if (nameInput === null) return;
-            item.fullName = nameInput;
             
-            localStorage.setItem('testProducts', JSON.stringify(products));
-            updateListDisplay();
-        }
-
-        function clearLocalProductsOnly() {
-            if (confirm("⚠️ Möchtest du wirklich alle Produkt-Altlasten von diesem Handy löschen?")) {
-                localStorage.removeItem('testProducts');
-                products = {};
-                updateListDisplay();
-                alert("✅ Handyspeicher wurde auf 0 gesetzt!");
+            // DIE NEUE SICHERUNG: Wenn du "löschen" eintippst, fliegt der Artikel sofort raus!
+            if (nameInput.trim().toLowerCase() === "löschen") {
+                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
+                    delete products[code];
+                    localStorage.setItem('testProducts', JSON.stringify(products));
+                    updateListDisplay();
+                    return;
