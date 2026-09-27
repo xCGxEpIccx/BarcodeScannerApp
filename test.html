@@ -125,17 +125,15 @@
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
         // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & FILTER & LÖSCH-BUTTON)
+        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & LÖSCH-FUNKTION)
         // ==========================================
         
-        // Cloud-Konfiguration (Greift direkt auf deine bestand.json zu)
         const GITHUB_USER = "xcgxepiccx";
         const GITHUB_REPO = "BarcodeScannerApp";
         const FILE_PATH = "bestand.json";
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
         let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "false";
 
-        // Holt die bestand.json live von GitHub
         async function loadFromCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             try {
@@ -156,7 +154,6 @@
             }
         }
 
-        // Schiebt den aktuellen Bestand live hoch auf GitHub
         async function saveToCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
@@ -185,7 +182,6 @@
             } catch (e) { console.error(e); }
         }
 
-        // Das schlaue 3-Popup-Eingabesystem mit Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code] || { rawName: "", datum: "", ort: "" };
 
@@ -198,6 +194,7 @@
                     if (cloudAuthenticated === "true") {
                         saveToCloud();
                     } else {
+                        localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
                     return;
@@ -240,11 +237,11 @@
             if (cloudAuthenticated === "true") {
                 saveToCloud();
             } else {
+                localStorage.setItem('testProducts', JSON.stringify(products));
                 updateListDisplay();
             }
         }
 
-        // FUNKTION: Löscht NUR die Bestandsdaten vom Handy, lässt das Passwort aktiv!
         function clearLocalProductsOnly() {
             if (confirm("⚠️ Möchtest du wirklich alle Produkt-Altlasten aus dem lokalen Speicher deines Handys löschen? Dein Passwort bleibt gespeichert!")) {
                 localStorage.removeItem('testProducts');
@@ -286,6 +283,7 @@
                 return;
             }
             
+            // MESSERSCHARF REPARIERT: Vergleicht nameA jetzt korrekt mit nameB (itemB)!
             keys.sort((a, b) => {
                 let itemA = products[a];
                 let itemB = products[b];
@@ -326,4 +324,8 @@
             if (cloudAuthenticated !== "true") {
                 let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
                 if (userPass === "bier123") {
+                    localStorage.setItem('cloud_auth_ok', "true");
+                    cloudAuthenticated = "true";
+                    loadFromCloud();
+                } else {
       
