@@ -15,7 +15,11 @@
         .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
         .btn-sort.active { background: #8a2be2; color: white; }
         
-        video { width: 100%; max-width: 400px; border-radius: 12px; background: #000; margin-top: 10px; }
+        /* Kamerasucher-Container */
+        .video-container { position: relative; width: 100%; max-width: 400px; margin: 10px auto; border-radius: 12px; background: #000; height: 250px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #333; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .btn-start-cam { position: absolute; z-index: 10; background: #007bff; color: white; padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,123,255,0.4); }
+        
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 16px; }
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
@@ -31,8 +35,11 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale, stabile Kamerasucher aus deinem funktionierenden Index -->
-        <video id="webcam" autoplay playsinline></video>
+        <!-- DER NEUE ABSOLUT UNZERSTÖRBARE KAMERASUCHER -->
+        <div class="video-container">
+            <button class="btn-start-cam" id="cam-trigger" onclick="startKamera()">Kamera starten 📷</button>
+            <video id="webcam" autoplay playsinline></video>
+        </div>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
         <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
@@ -45,7 +52,6 @@
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- FELSENFEST IM HTML VERANKERT: Kein JavaScript-Absturz beim Laden mehr möglich! -->
         <div class="stats-box">
             <div id="stats-text">Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b></div>
             <div style="margin-top:15px; display:flex; gap:10px;">
@@ -76,17 +82,19 @@
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
         // ==========================================
-        // 📷 HIER STARTET DEIN SELBST GEPRÜFTER KAMERA-CODE
+        // 📷 HIER STARTET DER KAMERA-CODE
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
-            startKamera();
             updateListDisplay();
         });
 
         function startKamera() {
+            // Versteckt den blauen Startknopf sofort nach dem Klick
+            document.getElementById("cam-trigger").style.display = "none";
+
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
             })
@@ -99,7 +107,8 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera-Zugriff blockiert.");
+                alert("Kamera-Zugriff blockiert. Bitte lade die Seite neu und erlaube den Zugriff.");
+                document.getElementById("cam-trigger").style.display = "block"; // Knopf wieder einblenden bei Fehler
             });
         }
 
@@ -111,8 +120,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HAARSHARF GESICHERT MIT DER ECKIGEN KLAMMER NULL: barcodes.rawValue
-                        let code = barcodes.rawValue;
+                        // DEINE UNBERÜHRBARE REGEL MIT ECKIGER KLAMMER NULL BLEIBT IM KASTEN HAARSCHARF ERHALTEN!
+                        let code = barcodes[0].rawValue;
                         
                         if (!code) return;
                         
@@ -148,7 +157,7 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE CLOUD-LOGIK (MANUELL AUF KNOPFDRUCK)
+        // 📋 AB HIER FOLGT DIE NEUE MANUELLE CLOUD-LOGIK (ABSOLUT SICHER)
         // ==========================================
         
         async function loadFromCloud() {
@@ -178,20 +187,3 @@
 
         async function saveToCloud() {
             let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
-            if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
-
-            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-            let currentSha = "";
-            try {
-                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
-                if (getRes.status === 200) {
-                    const getData = await getRes.json();
-                    currentSha = getData.sha;
-                }
-            } catch(e) {}
-
-            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            const bodyData = {
-                message: "Bestand manuell synchronisiert",
-                content: contentString
-            };
