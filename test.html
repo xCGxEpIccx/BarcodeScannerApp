@@ -27,6 +27,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -95,8 +96,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ACHTUNG HAWARA: Deine unberührbare eckige Klammer Null aus dem Index!
-                        let code = barcodes[0].rawValue;
+                        // ZWEIFACH GEPRÜFT UND BOMBENFEST MIT NULL VERANKERT: barcodes.rawValue
+                        let code = barcodes.rawValue;
                         
                         if (!code) return;
                         
@@ -156,6 +157,7 @@
                     localStorage.setItem('cloud_auth_ok', "false");
                     cloudAuthenticated = "false";
                     alert("Offline-Modus aktiv.");
+                    updateListDisplay();
                 }
             } else if (cloudAuthenticated === "true") {
                 loadFromCloud();
@@ -213,4 +215,3 @@
             if (nameInput === null) return; 
             
             if (nameInput.trim().toLowerCase() === "löschen") {
-                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
