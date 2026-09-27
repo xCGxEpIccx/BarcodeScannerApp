@@ -26,7 +26,7 @@
         /* Statistik & Cloud-Tasten Box */
         .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
         .stats-box b { color: #00b300; }
-        .cloud-btn { background: #007bff; color: white; padding: 12px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .cloud-btn { background: #00b300; color: white; padding: 12px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -51,11 +51,9 @@
         <!-- Die Box existiert fest im HTML, damit JavaScript niemals abstürzt! -->
         <div class="stats-box" id="stats-anzeige">
             <div id="stats-text">Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b></div>
-            <div style="margin-top:15px; display:flex; gap:10px;">
-                <button class="cloud-btn" onclick="saveToCloud()" style="background:#00b300; margin:0;">Bestand hochladen ☁️</button>
-                <button class="cloud-btn" onclick="loadFromCloud()" style="background:#007bff; margin:0;">Bestand herunterladen 🔄</button>
-            </div>
-            <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 20px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Handyspeicher leeren</button>
+            <!-- Herunterladen komplett entfernt, nur noch reines Hochladen aktiv -->
+            <button class="cloud-btn" onclick="saveToCloud()">Bestand hochladen ☁️</button>
+            <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%; cursor:pointer;">⚠️ Handyspeicher leeren</button>
         </div>
     </div>
 
@@ -107,7 +105,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ZEILE 105: HAARSCHARF MIT DER ECKIGEN KLAMMER NULL KORRIGIERT!
+                        // ZEILE 105: UNZERSCHREIDBAR MIT DER ECKIGEN KLAMMER NULL GEBOTEN!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -167,31 +165,37 @@
             updateListDisplay();
         }
 
-        // 📋 MANUELLE CLOUD-LOGIK (NUR AUF BUTTON-DRUCK!)
-        async function loadFromCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
+        async function saveToCloud() {
+            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
-            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
+            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+            let currentSha = "";
+            try {
+                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
+                if (getRes.status === 200) {
+                    const getData = await getRes.json();
+                    currentSha = getData.sha;
+                }
+            } catch(e) {}
+
+            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
+            const bodyData = {
+                message: "Update",
+                content: contentString
+            };
+            if (currentSha) bodyData.sha = currentSha;
+
             try {
                 const response = await fetch(url, {
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" }
+                    method: "PUT",
+                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(bodyData)
                 });
-                if (response.status === 200) {
-                    const data = await response.json();
-                    const content = decodeURIComponent(escape(atob(data.content)));
-                    products = JSON.parse(content);
-                    localStorage.setItem('minimalProducts', JSON.stringify(products));
-                    updateListDisplay();
-                    alert("✅ Cloud-Bestand erfolgreich geladen!");
+                if (response.status === 200 || response.status === 201) {
+                    alert("✅ Bestand erfolgreich in deiner GitHub Cloud gesichert!");
                 } else {
-                    alert("⚠️ Die Datei bestand.json wurde auf GitHub nicht gefunden.");
+                    alert("❌ Cloud-Speicherfehler! Status: " + response.status);
                 }
             } catch (e) { 
                 console.error(e); 
-                alert("❌ Verbindungsfehler zur Cloud!");
-            }
-        }
-
-        async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
