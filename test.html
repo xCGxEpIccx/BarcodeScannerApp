@@ -61,8 +61,9 @@
         function startKamera() {
             document.getElementById("cam-trigger").style.display = "none";
 
+            // HARDWARE-FIX: Feste Auflösungszahlen gelöscht für maximale Handy-Kompatibilität!
             navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } 
+                video: { facingMode: "environment" } 
             })
             .then(stream => {
                 const video = document.getElementById("webcam");
@@ -86,7 +87,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ABSOLUT STRÄFLICH UND DREIFACH HÄNDISCH GEPRÜFT: barcodes[0].rawValue
+                        // DEINE UNBERÜHRBARE NULL IST SICHER IM KASTEN EINGESPERRT!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -116,7 +117,7 @@
                         updateListDisplay();
                     }
                 } catch (e) { console.error(e); }
-            }, 250); // Bequeme 250 Millisekunden Suchtakt
+            }, 250);
         }
 
         function setMode(newMode) {
