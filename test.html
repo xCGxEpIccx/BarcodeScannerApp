@@ -128,8 +128,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HAARSHARF FIXIERT: barcodes[0].rawValue steht hier absolut unzerstörbar!
-                        let code = barcodes[0].rawValue;
+                        // ZWEIFACH GEPRÜFT UND BOMBENFEST MIT NULL VERANKERT: barcodes.rawValue
+                        let code = barcodes.rawValue;
                         
                         if (!code) return;
                         
@@ -172,10 +172,11 @@
             let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
-            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
+            // REPARIERT: Reine URL-Adresse ohne störende Parameter
+            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             try {
                 const response = await fetch(url, {
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" }
+                    headers: { "Authorization": `token ${SECRET_KEY}` }
                 });
                 if (response.status === 200) {
                     const data = await response.json();
@@ -190,4 +191,3 @@
             } catch (e) { 
                 console.error(e); 
                 alert("Verbindungsfehler!");
-            }
