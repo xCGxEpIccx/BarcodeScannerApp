@@ -21,16 +21,12 @@
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
-        
-        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
-        .stats-box b { color: #00b300; }
     </style>
 </head>
 <body>
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -42,16 +38,12 @@
             <button class="btn-sort active" id="sort-name" onclick="triggerSort('name')">A-Z 🔤</button>
         </div>
 
-        <div class="list-box" id="bestand-liste">Lade Bestand...</div>
-
-        <div class="stats-box" id="stats-anzeige">
-            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
-        </div>
+        <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
     </div>
 
     <script>
         // ==========================================
-        // ALLGEMEINE VARIABLEN & CLOUD CONFIG
+        // ALLGEMEINE VARIABLEN (EXAKT AUS INDEX)
         // ==========================================
         let mode = "add";
         let currentSort = "name";
@@ -60,56 +52,22 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Cloud-Konfiguration
-        const GITHUB_USER = "xcgxepiccx";
-        const GITHUB_REPO = "BarcodeScannerApp";
-        const FILE_PATH = "bestand.json";
-        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
-        
-        let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "";
-
-        // Startet mit lokalem Speicher, falls Cloud noch nicht bereit ist
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // 📷 HIER STARTET DER KAMERA-CODE (EXAKT AUS INDEX)
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
-            
-            // ABGETRENNT & ABSOLUTE PRIORITÄT: Kamera zündet SOFORT bedingungslos!
             startKamera();
-
-            // Erstellt die Statistik-Box vorab im Speicher, damit updateListDisplay() nicht abstürzt
-            let statsBox = document.getElementById("stats-anzeige");
-            if (!statsBox) {
-                statsBox = document.createElement("div");
-                statsBox.id = "stats-anzeige";
-                statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
-                document.querySelector('.container').appendChild(statsBox);
-            }
-            
             updateListDisplay();
-
-            // Passwort-Abfrage im Hintergrund nach 400ms verzögert
+            
+            // Cloud-Passwort verzögert im Hintergrund abfragen, damit die Kamera nicht blockiert wird!
             setTimeout(() => {
-                if (cloudAuthenticated !== "true" && cloudAuthenticated !== "false") {
-                    let userPass = prompt("Bitte gib das Bestand-Passwort ein (Tippe 'abbrechen' für Offline):");
-                    if (userPass === "bier123") {
-                        localStorage.setItem('cloud_auth_ok', "true");
-                        cloudAuthenticated = "true";
-                        loadFromCloud();
-                    } else {
-                        localStorage.setItem('cloud_auth_ok', "false");
-                        cloudAuthenticated = "false";
-                        alert("Offline-Modus aktiv.");
-                    }
-                } else if (cloudAuthenticated === "true") {
-                    loadFromCloud();
-                }
-            }, 400);
+                initCloudSystem();
+            }, 800);
         });
 
         function startKamera() {
@@ -137,7 +95,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE PROMPT ANWEISUNG: barcodes[0] felsenfest eingebaut!
+                        // ACHTUNG HAWARA: Deine unberührbare eckige Klammer Null aus dem Index!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -174,13 +132,36 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
-        // 📷 HIER ENDET DER KAMERA-CODE
+        // 📷 HIER ENDET DER KAMERA-CODE (UNBERÜHRT VOM INDEX)
         // ==========================================
 
 
         // ==========================================
-        // 📋 CLOUD SYNCHRONISIERUNG (GITHUB API)
+        // 📋 AB HIER FOLGT DIE NEUE CLOUD- & PRODUKT-LOGIK
         // ==========================================
+        const GITHUB_USER = "xcgxepiccx";
+        const GITHUB_REPO = "BarcodeScannerApp";
+        const FILE_PATH = "bestand.json";
+        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
+        let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "";
+
+        function initCloudSystem() {
+            if (cloudAuthenticated !== "true" && cloudAuthenticated !== "false") {
+                let userPass = prompt("Bitte gib das Bestand-Passwort ein (Tippe 'abbrechen' für Offline):");
+                if (userPass === "bier123") {
+                    localStorage.setItem('cloud_auth_ok', "true");
+                    cloudAuthenticated = "true";
+                    loadFromCloud();
+                } else {
+                    localStorage.setItem('cloud_auth_ok', "false");
+                    cloudAuthenticated = "false";
+                    alert("Offline-Modus aktiv.");
+                }
+            } else if (cloudAuthenticated === "true") {
+                loadFromCloud();
+            }
+        }
+
         async function loadFromCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             try {
@@ -194,9 +175,7 @@
                     localStorage.setItem('testProducts', JSON.stringify(products));
                 }
                 updateListDisplay();
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function saveToCloud() {
@@ -210,3 +189,28 @@
                 }
             } catch(e) {}
 
+            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
+            const bodyData = {
+                message: "Bestand aktualisiert",
+                content: contentString
+            };
+            if (currentSha) bodyData.sha = currentSha;
+
+            try {
+                await fetch(url, {
+                    method: "PUT",
+                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify(bodyData)
+                });
+                updateListDisplay();
+            } catch (e) { console.error(e); }
+        }
+
+        function renameProduct(code) {
+            let item = products[code] || { rawName: "", datum: "", ort: "" };
+
+            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
+            if (nameInput === null) return; 
+            
+            if (nameInput.trim().toLowerCase() === "löschen") {
+                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
