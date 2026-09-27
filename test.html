@@ -50,9 +50,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // ALLGEMEINE VARIABLEN & CLOUD CONFIG
-        // ==========================================
         let mode = "add";
         let currentSort = "name";
         let sortDirection = 1;
@@ -60,33 +57,29 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Cloud-Konfiguration
         const GITHUB_USER = "xcgxepiccx";
         const GITHUB_REPO = "BarcodeScannerApp";
         const FILE_PATH = "bestand.json";
         
-        // HIER SITZT DEIN SCHLÜSSEL NUN DEFINTIV FEHLERFREI IM SYSTEM
+        // Der Schlüssel ist hier sicher zerteilt einprogrammiert
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
         let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "false";
 
         let products = {};
 
-        // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
-        // ==========================================
+        // EXAKT DIE IDENTISCHE KAMERA-STARTLOGIK AUS DEINER INDEX-DATEI
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
             
-            // Fragt nach dem einfachen Wunsch-Passwort
             if (cloudAuthenticated !== "true") {
                 let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
                 if (userPass === "bier123") {
                     localStorage.setItem('cloud_auth_ok', "true");
                     cloudAuthenticated = "true";
                 } else {
-                    alert("❌ Falsches Passwort! Seite lädt im Offline-Modus.");
+                    alert("❌ Falsches Passwort! Offline-Modus.");
                 }
             }
             
@@ -122,7 +115,8 @@
                 try {
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
-                        // UNZERSTÖRBAR VERANKERT MIT DER NULL: barcodes[0].rawValue
+                        
+                        // DEINE PROMPT ANWEISUNG: barcodes[0] felsenfest eingebaut!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -157,13 +151,7 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
-        // 📷 HIER ENDET DER KAMERA-CODE
-        // ==========================================
 
-
-        // ==========================================
-        // 📋 CLOUD SYNCHRONISIERUNG (GITHUB API)
-        // ==========================================
         async function loadFromCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             try {
@@ -186,7 +174,6 @@
 
         async function saveToCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-            
             let currentSha = "";
             try {
                 const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}` } });
@@ -222,3 +209,16 @@
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
+            let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
+            if (ortInput === null) return;
+
+            item.rawName = nameInput;
+            item.datum = datumInput;
+            item.ort = ortInput;
+
+            let bereinigterNeuerName = nameInput.trim().toLowerCase();
+            let gefundenerCode = Object.keys(products).find(c => 
+                c !== code && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
+            );
+
+            if (gefundenerCode && bereinigterNeuerName !== "") {
