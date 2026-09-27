@@ -55,7 +55,7 @@
                 <button class="cloud-btn" onclick="saveToCloud()" style="background:#00b300; margin:0;">Bestand hochladen ☁️</button>
                 <button class="cloud-btn" onclick="loadFromCloud()" style="background:#007bff; margin:0;">Bestand herunterladen 🔄</button>
             </div>
-            <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 20px; border-radius: 6px; border: none; font-weight: bold; width: 100%; cursor:pointer;">⚠️ Handyspeicher leeren</button>
+            <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 20px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Handyspeicher leeren</button>
         </div>
     </div>
 
@@ -107,7 +107,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HIER SITZT JETZT BOMBENFEST UND UNZERSTÖRBAR DIE ECKIGE KLAMMER NULL IN ZEILE 105!
+                        // ZEILE 105: HAARSCHARF MIT DER ECKIGEN KLAMMER NULL KORRIGIERT!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -194,3 +194,4 @@
         }
 
         async function saveToCloud() {
+            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
