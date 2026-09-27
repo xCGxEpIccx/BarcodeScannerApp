@@ -65,9 +65,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // ALLGEMEINE VARIABLEN
-        // ==========================================
         let mode = "add";
         let currentSort = "name";
         let sortDirection = 1;
@@ -119,7 +116,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ZEILE 91: HIER STEHT DIE REPARIERTE ECKIGE KLAMMER NULL!
+                        // DEINE KORREKTUR AUS ZEILE 123 NUN IM MASTER CODE GESICHERT!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -143,7 +140,7 @@
                                 products[code].anzahl -= 1;
                                 if (products[code].anzahl <= 0) delete products[code];
                             }
-                        }, 200);
+                        }
                         
                         localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
@@ -151,14 +148,8 @@
                 } catch (e) { console.error(e); }
             }, 200);
         }
-        // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
 
-
-        // ==========================================
-        // 📋 AB HIER FOLGT DIE CLOUD-LOGIK (MANUELL)
-        // ==========================================
-        
         async function loadFromCloud() {
             let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
@@ -174,7 +165,7 @@
                     products = JSON.parse(content);
                     localStorage.setItem('testProducts', JSON.stringify(products));
                     updateListDisplay();
-                    alert("✅ Bestand erfolgreich aus der GitHub-Cloud geladen!");
+                    alert("✅ Cloud-Bestand erfolgreich geladen!");
                 } else {
                     alert("⚠️ Die Datei bestand.json wurde auf GitHub nicht gefunden oder ist leer.");
                 }
@@ -191,10 +182,20 @@
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
             try {
-                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
+                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}` } });
                 if (getRes.status === 200) {
                     const getData = await getRes.json();
                     currentSha = getData.sha;
                 }
             } catch(e) {}
 
+            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
+            const bodyData = {
+                message: "Update",
+                content: contentString
+            };
+            if (currentSha) bodyData.sha = currentSha;
+
+            try {
+                const response = await fetch(url, {
+                    method: "PUT",
