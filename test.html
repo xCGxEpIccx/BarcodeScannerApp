@@ -125,43 +125,62 @@
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
         // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & FILTER & FEAT)
         // ==========================================
-        
-        // Cloud-Konfiguration (Greift direkt auf deine bestand.json zu)
+        // 📋 AB HIER FOLGT DIE NEUE CLOUD- & PRODUKT-LOGIK (ABSOLUT STABIL)
+        // ==========================================
         const GITHUB_USER = "xcgxepiccx";
         const GITHUB_REPO = "BarcodeScannerApp";
         const FILE_PATH = "bestand.json";
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
-        let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "false";
+        let cloudAuthenticated = localStorage.getItem('cloud_auth_ok') || "";
 
-        // Holt die bestand.json live von GitHub
+        function initCloudSystem() {
+            if (cloudAuthenticated !== "true" && cloudAuthenticated !== "false") {
+                let userPass = prompt("Bitte gib das Bestand-Passwort ein (Tippe 'abbrechen' für Offline):");
+                if (userPass === "bier123") {
+                    localStorage.setItem('cloud_auth_ok', "true");
+                    cloudAuthenticated = "true";
+                    loadFromCloud();
+                } else {
+                    localStorage.setItem('cloud_auth_ok', "false");
+                    cloudAuthenticated = "false";
+                    alert("Offline-Modus aktiv.");
+                    updateListDisplay();
+                }
+            } else if (cloudAuthenticated === "true") {
+                loadFromCloud();
+            }
+        }
+
         async function loadFromCloud() {
-            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}?nocache=${Date.now()}`;
             try {
                 const response = await fetch(url, {
-                    headers: { "Authorization": `token ${SECRET_KEY}` }
+                    headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" }
                 });
                 if (response.status === 200) {
                     const data = await response.json();
                     const content = decodeURIComponent(escape(atob(data.content)));
                     products = JSON.parse(content);
+                    localStorage.setItem('testProducts', JSON.stringify(products));
+                    document.getElementById("bestand-liste").innerHTML = ""; 
                 } else {
-                    products = {};
+                    // Falls die Cloud leer/Fehler meldet, nutzen wir die lokalen Handydaten als Backup
+                    products = JSON.parse(localStorage.getItem('testProducts')) || {};
                 }
                 updateListDisplay();
-            } catch (e) {
-                console.error(e);
-                document.getElementById("bestand-liste").innerHTML = "Cloud-Ladefehler.";
+            } catch (e) { 
+                console.error(e); 
+                products = JSON.parse(localStorage.getItem('testProducts')) || {};
+                updateListDisplay();
             }
         }
 
-        // Schiebt den aktuellen Bestand live hoch auf GitHub (Sperrt die Kamera NICHT!)
         async function saveToCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
             try {
-                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}` } });
+                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
                 if (getRes.status === 200) {
                     const getData = await getRes.json();
                     currentSha = getData.sha;
@@ -185,32 +204,28 @@
             } catch (e) { console.error(e); }
         }
 
-        // Das schlaue 3-Popup-Eingabesystem mit eingebauter Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code] || { rawName: "", datum: "", ort: "" };
 
-            // 1. Popup für den Namen
             let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
             if (nameInput === null) return; 
             
-            // DIE NEUE SICHERUNG: Wenn du "löschen" eintippst, fliegt der Artikel sofort raus!
             if (nameInput.trim().toLowerCase() === "löschen") {
                 if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
                     delete products[code];
+                    localStorage.setItem('testProducts', JSON.stringify(products));
                     if (cloudAuthenticated === "true") {
                         saveToCloud();
                     } else {
                         updateListDisplay();
                     }
-                    return; // Beendet die Funktion sofort, keine weiteren Popups!
+                    return;
                 }
             }
             
-            // 2. Popup für das Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
-            // 3. Popup für den Lagerort
             let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
             if (ortInput === null) return;
 
@@ -218,7 +233,6 @@
             item.datum = datumInput;
             item.ort = ortInput;
 
-            // Schlaue Zusammenführung: Suchen, ob es SCHON ein Bier/Produkt mit diesem Namen gibt
             let bereinigterNeuerName = nameInput.trim().toLowerCase();
             let gefundenerCode = Object.keys(products).find(c => 
                 c !== code && products[c].rawName && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
@@ -242,10 +256,23 @@
                 item.fullName = anzeigeName + anzeigeDatum + anzeigeOrt;
             }
             
+            localStorage.setItem('testProducts', JSON.stringify(products));
             if (cloudAuthenticated === "true") {
                 saveToCloud();
             } else {
                 updateListDisplay();
+            }
+        }
+
+        function clearLocalProductsOnly() {
+            if (confirm("⚠️ Möchtest du wirklich alle Produkt-Altlasten aus dem lokalen Speicher deines Handys löschen?")) {
+                localStorage.removeItem('testProducts');
+                products = {};
+                updateListDisplay();
+                if (cloudAuthenticated === "true") {
+                    saveToCloud();
+                }
+                alert("✅ Speicher wurde auf 0 gesetzt!");
             }
         }
 
@@ -271,10 +298,20 @@
             const listDiv = document.getElementById("bestand-liste");
             let keys = Object.keys(products);
             
+            let statsBox = document.getElementById("stats-anzeige");
+            if (!statsBox) {
+                statsBox = document.createElement("div");
+                statsBox.id = "stats-anzeige";
+                statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
+                document.querySelector('.container').appendChild(statsBox);
+            }
+
             if (keys.length === 0) {
                 listDiv.innerHTML = "Dein Bestand ist leer.";
-                let statsBox = document.getElementById("stats-anzeige");
-                if (statsBox) statsBox.innerHTML = "Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>";
+                let cloudStatusText = (cloudAuthenticated === "true") ? "☁️ Cloud-Synchronisierung aktiv" : (cloudAuthenticated === "false" ? "⚠️ Offline-Modus aktiv" : "Lade Cloud-Status...");
+                statsBox.innerHTML = `Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+                <br><span style="font-size:11px; color:${cloudAuthenticated === "true" ? "#00b300" : "#ff9800"};">${cloudStatusText}</span>
+                <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Lokalen Bestand leeren</button>`;
                 return;
             }
             
@@ -293,41 +330,4 @@
             for (let i = 0; i < keys.length; i++) {
                 let code = keys[i];
                 let item = products[code];
-                if (item) {
-                    gesamtStueckzahl += (item.anzahl || 0);
-                    html += `<div class="product-item"><div class="product-header"><span>• <b>${item.fullName || 'Unbekannt'}</b> | Anzahl: <b>${item.anzahl || 0} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
-                }
-            }
-            
-            listDiv.innerHTML = html;
-            
-            let statsBox = document.getElementById("stats-anzeige");
-            if (!statsBox) {
-                statsBox = document.createElement("div");
-                statsBox.id = "stats-anzeige";
-                statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
-                document.querySelector('.container').appendChild(statsBox);
-            }
-            statsBox.innerHTML = `Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b> <br><span style="font-size:11px; color:#00b300;">☁️ Cloud-Synchronisierung aktiv</span>`;
-        }
-
-        // Passwort-Sperre abfragen
-        setTimeout(() => {
-            if (cloudAuthenticated !== "true") {
-                let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
-                if (userPass === "bier123") {
-                    localStorage.setItem('cloud_auth_ok', "true");
-                    cloudAuthenticated = "true";
-                    loadFromCloud();
-                } else {
-                    alert("❌ Falsches Passwort! Seite läuft im Offline-Modus.");
-                    document.getElementById("bestand-liste").innerHTML = "Offline-Modus aktiv.";
-                }
-            } else {
-                loadFromCloud();
-            }
-        }, 500);
-    </script>
-</body>
-</html>
-        
+     
