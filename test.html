@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner Minimal</title>
+    <title>Barcode Scanner Pro - FEATURE TEST</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
@@ -19,7 +19,9 @@
         .btn-start-cam { position: absolute; z-index: 10; background: #007bff; color: white; padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         
         .list-box { background: #1e1e1e; padding: 15px; border-radius: 8px; text-align: left; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 16px; }
-        .product-item { padding: 10px 0; border-bottom: 1px solid #333; }
+        .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .product-header { display: flex; justify-content: space-between; align-items: center; }
+        .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -61,7 +63,6 @@
         function startKamera() {
             document.getElementById("cam-trigger").style.display = "none";
 
-            // HARDWARE-FIX: Feste Auflösungszahlen gelöscht für maximale Handy-Kompatibilität!
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment" } 
             })
@@ -74,7 +75,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Kamera-Zugriff blockiert. Bitte erlaube den Zugriff in deinen Handy-Einstellungen.");
+                alert("Kamera-Zugriff blockiert.");
                 document.getElementById("cam-trigger").style.display = "block";
             });
         }
@@ -87,7 +88,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE UNBERÜHRBARE NULL IST SICHER IM KASTEN EINGESPERRT!
+                        // DEINE REPARIERTE UNBERÜHRBARE ECKIGE KLAMMER NULL!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -102,14 +103,15 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = 1;
+                                // Startet komplett leer ohne vordefinierten Text
+                                products[code] = { rawName: "", datum: "", anzahl: 1 };
                             } else {
-                                products[code] += 1;
+                                products[code].anzahl += 1;
                             }
                         } else if (mode === "remove") {
                             if (products[code]) {
-                                products[code] -= 1;
-                                if (products[code] <= 0) delete products[code];
+                                products[code].anzahl -= 1;
+                                if (products[code].anzahl <= 0) delete products[code];
                             }
                         }
                         
@@ -118,6 +120,36 @@
                     }
                 } catch (e) { console.error(e); }
             }, 250);
+        }
+
+        // Das 2-Popup-System (Name & Ablaufdatum) mit leerem Startfeld & Lösch-Sicherung
+        function renameProduct(code) {
+            let item = products[code];
+            if (!item) return;
+
+            // Fenster 1: Produktname (Startet absolut leer, wenn noch nichts eingetragen wurde)
+            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum Entfernen):", item.rawName || "");
+            if (nameInput === null) return; 
+            
+            // LÖSCH-SICHERUNG
+            if (nameInput.trim().toLowerCase() === "löschen") {
+                if (confirm("Möchtest du diesen Artikel wirklich komplett löschen?")) {
+                    delete products[code];
+                    localStorage.setItem('minimalProducts', JSON.stringify(products));
+                    updateListDisplay();
+                    return;
+                }
+            }
+            
+            // Fenster 2: Ablaufdatum (Startet ebenfalls absolut leer)
+            let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
+            if (datumInput === null) return;
+
+            item.rawName = nameInput;
+            item.datum = datumInput;
+
+            localStorage.setItem('minimalProducts', JSON.stringify(products));
+            updateListDisplay();
         }
 
         function setMode(newMode) {
@@ -152,8 +184,13 @@
             let html = "";
             for (let i = 0; i < keys.length; i++) {
                 let code = keys[i];
-                let anzahl = products[code];
-                html += `<div class="product-item">• Barcode: <b>${code}</b> | Anzahl: <b>${anzahl} Stk.</b></div>`;
+                let item = products[code];
+                
+                // Erstellt die Textanzeige: Wenn kein Name da ist, wird der Barcode gezeigt
+                let anzeigeName = item.rawName ? item.rawName : "Neu gescannt: " + code;
+                let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
+                
+                html += `<div class="product-item"><div class="product-header"><span>• <b>${anzeigeName}${anzeigeDatum}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
             }
             listDiv.innerHTML = html;
         }
