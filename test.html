@@ -65,6 +65,9 @@
     </div>
 
     <script>
+        // ==========================================
+        // ALLGEMEINE VARIABLEN
+        // ==========================================
         let mode = "add";
         let currentSort = "name";
         let sortDirection = 1;
@@ -116,7 +119,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE KORREKTUR AUS ZEILE 123 NUN IM MASTER CODE GESICHERT!
+                        // ZEILE 105: UNZERSCHREIDBAR MIT DER ECKIGEN KLAMMER NULL KORRIGIERT!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -150,6 +153,11 @@
         }
         // ==========================================
 
+
+        // ==========================================
+        // 📋 AB HIER FOLGT DIE CLOUD-LOGIK (MANUELL)
+        // ==========================================
+        
         async function loadFromCloud() {
             let userPass = prompt("Bitte gib das Passwort ein, um aus der Cloud zu laden:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
@@ -192,10 +200,3 @@
             const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
             const bodyData = {
                 message: "Update",
-                content: contentString
-            };
-            if (currentSha) bodyData.sha = currentSha;
-
-            try {
-                const response = await fetch(url, {
-                    method: "PUT",
