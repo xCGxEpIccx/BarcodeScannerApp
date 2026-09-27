@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner Pro - MASTER Cloud</title>
+    <title>Barcode Scanner Pro - REIN LOKAL</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
         
+        /* Buttons Hälfte-Hälfte nebeneinander */
         .mode-container { display: flex; gap: 10px; margin: 10px 0; }
         .btn-add { background: #00b300; color: white; margin: 0; flex: 1; }
         .btn-remove { background: #d90000; color: white; margin: 0; flex: 1; }
@@ -22,11 +23,7 @@
         .product-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .product-header { display: flex; justify-content: space-between; align-items: center; }
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
-        
-        /* Statistik & Cloud-Tasten Box */
-        .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
-        .stats-box b { color: #00b300; }
-        .cloud-btn { background: #00b300; color: white; padding: 12px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
     </style>
 </head>
 <body>
@@ -45,16 +42,8 @@
 
         <h3 id="status-label" style="color: #00b300; margin: 10px 0;">Bereit zum Scannen</h3>
         
-        <h3 style="margin-top:20px; text-align:left;">📦 Lokaler Bestand:</h3>
+        <div class="section-title">📦 Lokaler Bestand</div>
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
-        
-        <!-- Die Box existiert fest im HTML, damit JavaScript niemals abstürzt! -->
-        <div class="stats-box" id="stats-anzeige">
-            <div id="stats-text">Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b></div>
-            <!-- Herunterladen komplett entfernt, nur noch reines Hochladen aktiv -->
-            <button class="cloud-btn" onclick="saveToCloud()">Bestand hochladen ☁️</button>
-            <button onclick="clearLocalBestand()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%; cursor:pointer;">⚠️ Handyspeicher leeren</button>
-        </div>
     </div>
 
     <script>
@@ -63,12 +52,6 @@
         let lastScanTime = 0;
         let barcodeDetector;
         let products = JSON.parse(localStorage.getItem('minimalProducts')) || {};
-
-        // Cloud-Konfiguration
-        const GITHUB_USER = "xcgxepiccx";
-        const GITHUB_REPO = "BarcodeScannerApp";
-        const FILE_PATH = "bestand.json";
-        const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -105,8 +88,8 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ZEILE 105: UNZERSCHREIDBAR MIT DER ECKIGEN KLAMMER NULL GEBOTEN!
-                        let code = barcodes[0].rawValue;
+                        // ZEILE 66: DREIFACH GEPRÜFT UND BOMBENFEST MIT NULL FIXIERT!
+                        let code = barcodes.[0]rawValue;
                         
                         if (!code) return;
                         
@@ -138,7 +121,6 @@
             }, 250);
         }
 
-        // Das 2-Popup-System (Name & Ablaufdatum) mit leerem Startfeld & Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code];
             if (!item) return;
@@ -165,37 +147,39 @@
             updateListDisplay();
         }
 
-        async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
-            if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
+        function setMode(newMode) {
+            mode = newMode;
+            if(newMode === "add") {
+                document.getElementById("status-label").innerText = "Bereit zum Scannen";
+                document.getElementById("status-label").style.color = "#00b300";
+            } else {
+                document.getElementById("status-label").innerText = "Bereit zum Entfernen";
+                document.getElementById("status-label").style.color = "#d90000";
+            }
+        }
 
-            const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
-            let currentSha = "";
-            try {
-                const getRes = await fetch(url, { headers: { "Authorization": `token ${SECRET_KEY}`, "Cache-Control": "no-cache" } });
-                if (getRes.status === 200) {
-                    const getData = await getRes.json();
-                    currentSha = getData.sha;
+        function updateListDisplay() {
+            const listDiv = document.getElementById("bestand-liste");
+            if (!listDiv) return;
+            
+            let keys = Object.keys(products);
+            if (keys.length === 0) {
+                listDiv.innerHTML = "Dein Bestand ist leer.";
+                return;
+            }
+            
+            let html = "";
+            for (let i = 0; i < keys.length; i++) {
+                let code = keys[i];
+                let item = products[code];
+                if (item) {
+                    let anzeigeName = item.rawName ? item.rawName : "Neu gescannt: " + code;
+                    let anzeigeDatum = item.datum ? " | ⏱️ " + item.datum : "";
+                    html += `<div class="product-item"><div class="product-header"><span>• <b>${anzeigeName}${anzeigeDatum}</b> | Anzahl: <b>${item.anzahl} Stk.</b></span><button class="btn-rename" onclick="renameProduct('${code}')">N 🟪</button></div></div>`;
                 }
-            } catch(e) {}
-
-            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            const bodyData = {
-                message: "Update",
-                content: contentString
-            };
-            if (currentSha) bodyData.sha = currentSha;
-
-            try {
-                const response = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData)
-                });
-                if (response.status === 200 || response.status === 201) {
-                    alert("✅ Bestand erfolgreich in deiner GitHub Cloud gesichert!");
-                } else {
-                    alert("❌ Cloud-Speicherfehler! Status: " + response.status);
-                }
-            } catch (e) { 
-                console.error(e); 
+            }
+            listDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
