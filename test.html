@@ -22,6 +22,7 @@
         .btn-rename { background: #8a2be2; color: white; width: auto; padding: 5px 12px; margin: 0; font-size: 14px; border-radius: 4px; display: inline-block; }
         .section-title { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; margin-bottom: 5px; font-size: 22px; }
         
+        /* Statistik-Box Styling fest im CSS verankert */
         .stats-box { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa; }
         .stats-box b { color: #00b300; }
         .cloud-btn { background: #007bff; color: white; padding: 10px; font-size: 14px; margin: 5px 0; width: 100%; border-radius: 6px; border: none; font-weight: bold; }
@@ -31,6 +32,7 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
+        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -43,6 +45,16 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
+
+        <!-- Die Boxen existieren jetzt fest im HTML, damit JavaScript niemals abstürzt! -->
+        <div class="stats-box" id="stats-anzeige">
+            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <button class="cloud-btn" onclick="saveToCloud()" style="background:#00b300; margin:0;">Bestand hochladen ☁️</button>
+                <button class="cloud-btn" onclick="loadFromCloud()" style="background:#007bff; margin:0;">Bestand herunterladen 🔄</button>
+            </div>
+            <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Handyspeicher leeren</button>
+        </div>
     </div>
 
     <script>
@@ -184,26 +196,3 @@
                 message: "Bestand manuell synchronisiert",
                 content: contentString
             };
-            if (currentSha) bodyData.sha = currentSha;
-
-            try {
-                const response = await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData)
-                });
-                if (response.status === 200 || response.status === 201) {
-                    alert("✅ Bestand erfolgreich in deiner GitHub Cloud gesichert!");
-                } else {
-                    alert("❌ Cloud-Speicherfehler! Status: " + response.status);
-                }
-            } catch (e) { 
-                console.error(e); 
-                alert("❌ Verbindung zu GitHub fehlgeschlagen!");
-            }
-        }
-
-        function renameProduct(code) {
-            let item = products[code] || { rawName: "", datum: "", ort: "" };
-
-            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
