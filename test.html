@@ -37,7 +37,7 @@
 <body>
     <div class="container">
         
-        <!-- Der absolut unzerstörbare Kamerasucher mit Klick-Zündung -->
+        <!-- Der Kamerasucher mit Klick-Zündung -->
         <div class="video-container">
             <button class="btn-start-cam" id="cam-trigger" onclick="startKamera()">Kamera starten 📷</button>
             <video id="webcam" autoplay playsinline></video>
@@ -60,7 +60,7 @@
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
 
-        <!-- Feste Box-Struktur -->
+        <!-- Feste Box-Struktur für Statistik und Cloud -->
         <div class="stats-box">
             <div id="stats-text">Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b></div>
             <div style="margin-top:15px; display:flex; gap:10px;">
@@ -73,7 +73,7 @@
 
     <script>
         // ==========================================
-        // ALLGEMEINE VARIABLEN
+        // ALLGEMEINE VARIABLEN (EXAKT AUS INDEX)
         // ==========================================
         let mode = "add";
         let currentSort = "name";
@@ -91,7 +91,7 @@
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
         // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // 📷 HIER STARTET DER KAMERA-CODE (GARANTIERT MIT KLAMMER NULL)
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -128,7 +128,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // KORRIGIERT: barcodes[0].rawValue steht hier absolut unantastbar!
+                        // HAARSHARF KORRIGIERT: barcodes[0].rawValue steht hier unantastbar!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -143,7 +143,8 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
+                                // REPARIERT: Struktur flach angelegt wie im funktionierenden Original
+                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -165,7 +166,7 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE MANUELLE CLOUD-LOGIK
+        // 📋 AB HIER FOLGT DIE CLOUD-LOGIK (MANUELL AUF KNOPFDRUCK)
         // ==========================================
         
         async function loadFromCloud() {
@@ -183,13 +184,6 @@
                     products = JSON.parse(content);
                     localStorage.setItem('testProducts', JSON.stringify(products));
                     updateListDisplay();
-                    alert("Bestand geladen!");
+                    alert("✅ Cloud-Bestand erfolgreich geladen!");
                 } else {
-                    alert("Die Datei bestand.json wurde auf GitHub nicht gefunden.");
-                }
-            } catch (e) { 
-                console.error(e); 
-                alert("Verbindungsfehler!");
-            }
-        }
-
+                    alert("Die Datei bestand.json wurde nicht gefunden.");
