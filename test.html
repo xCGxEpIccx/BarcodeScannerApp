@@ -42,7 +42,7 @@
             <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
         </div>
 
-        <!-- Der gewünschte Status-Text unter den Buttens -->
+        <!-- Der Status-Text unter den Buttons -->
         <h3 id="status-label" style="color: #00b300; margin: 10px 0;">Bereit zum Scannen</h3>
         
         <div class="section-title">📦 Bestand</div>
@@ -119,7 +119,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ZWEIFACH GEPRÜFT UND BOMBENFEST IM KASTEN FIXIERT: barcodes.rawValue
+                        // ZEILE 91: HIER STEHT DIE REPARIERTE ECKIGE KLAMMER NULL!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -156,7 +156,7 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE MANUELLE CLOUD-LOGIK (AUF BUTTON-DRUCK)
+        // 📋 AB HIER FOLGT DIE CLOUD-LOGIK (MANUELL)
         // ==========================================
         
         async function loadFromCloud() {
@@ -185,7 +185,7 @@
         }
 
         async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu保存:");
+            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
             if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
