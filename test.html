@@ -124,8 +124,8 @@
         }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
-              // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & FILTER & FEAT)
+                // ==========================================
+        // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & FILTER & LÖSCH-BUTTON)
         // ==========================================
         
         // Cloud-Konfiguration (Greift direkt auf deine bestand.json zu)
@@ -156,7 +156,7 @@
             }
         }
 
-        // Schiebt den aktuellen Bestand live hoch auf GitHub (Sperrt die Kamera NICHT!)
+        // Schiebt den aktuellen Bestand live hoch auf GitHub
         async function saveToCloud() {
             const url = `https://github.com{GITHUB_USER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
             let currentSha = "";
@@ -185,15 +185,13 @@
             } catch (e) { console.error(e); }
         }
 
-        // Das schlaue 3-Popup-Eingabesystem mit eingebauter Lösch-Sicherung
+        // Das schlaue 3-Popup-Eingabesystem mit Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code] || { rawName: "", datum: "", ort: "" };
 
-            // 1. Popup für den Namen
             let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
             if (nameInput === null) return; 
             
-            // DIE NEUE SICHERUNG: Wenn du "löschen" eintippst, fliegt der Artikel sofort raus!
             if (nameInput.trim().toLowerCase() === "löschen") {
                 if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
                     delete products[code];
@@ -202,15 +200,13 @@
                     } else {
                         updateListDisplay();
                     }
-                    return; // Beendet die Funktion sofort, keine weiteren Popups!
+                    return;
                 }
             }
             
-            // 2. Popup für das Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
-            // 3. Popup für den Lagerort
             let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
             if (ortInput === null) return;
 
@@ -218,7 +214,6 @@
             item.datum = datumInput;
             item.ort = ortInput;
 
-            // Schlaue Zusammenführung: Suchen, ob es SCHON ein Bier/Produkt mit diesem Namen gibt
             let bereinigterNeuerName = nameInput.trim().toLowerCase();
             let gefundenerCode = Object.keys(products).find(c => 
                 c !== code && products[c].rawName && products[c].rawName.trim().toLowerCase() === bereinigterNeuerName
@@ -249,6 +244,16 @@
             }
         }
 
+        // FUNKTION: Löscht NUR die Bestandsdaten vom Handy, lässt das Passwort aktiv!
+        function clearLocalProductsOnly() {
+            if (confirm("⚠️ Möchtest du wirklich alle Produkt-Altlasten aus dem lokalen Speicher deines Handys löschen? Dein Passwort bleibt gespeichert!")) {
+                localStorage.removeItem('testProducts');
+                products = {};
+                updateListDisplay();
+                alert("✅ Lokaler Produkt-Speicher wurde auf 0 gesetzt!");
+            }
+        }
+
         function setMode(newMode) {
             mode = newMode;
             if(newMode === "add") {
@@ -274,7 +279,10 @@
             if (keys.length === 0) {
                 listDiv.innerHTML = "Dein Bestand ist leer.";
                 let statsBox = document.getElementById("stats-anzeige");
-                if (statsBox) statsBox.innerHTML = "Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>";
+                if (statsBox) {
+                    statsBox.innerHTML = `Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
+                    <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Lokalen Bestand leeren</button>`;
+                }
                 return;
             }
             
@@ -308,7 +316,9 @@
                 statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
                 document.querySelector('.container').appendChild(statsBox);
             }
-            statsBox.innerHTML = `Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b> <br><span style="font-size:11px; color:#00b300;">☁️ Cloud-Synchronisierung aktiv</span>`;
+            statsBox.innerHTML = `Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b> 
+            <br><span style="font-size:11px; color:#00b300;">☁️ Cloud-Synchronisierung aktiv</span>
+            <button onclick="clearLocalProductsOnly()" style="background: #d90000; color: white; padding: 10px; font-size: 14px; margin-top: 15px; border-radius: 6px; border: none; font-weight: bold; width: 100%;">⚠️ Lokalen Bestand leeren</button>`;
         }
 
         // Passwort-Sperre abfragen
@@ -316,17 +326,3 @@
             if (cloudAuthenticated !== "true") {
                 let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
                 if (userPass === "bier123") {
-                    localStorage.setItem('cloud_auth_ok', "true");
-                    cloudAuthenticated = "true";
-                    loadFromCloud();
-                } else {
-                    alert("❌ Falsches Passwort! Seite läuft im Offline-Modus.");
-                    document.getElementById("bestand-liste").innerHTML = "Offline-Modus aktiv.";
-                }
-            } else {
-                loadFromCloud();
-            }
-        }, 500);
-    </script>
-</body>
-</html>
