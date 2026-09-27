@@ -124,7 +124,7 @@
         }
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
-        // ==========================================
+              // ==========================================
         // 📋 AB HIER FOLGT DIE NEUE BESTANDS-LISTE (CLOUD & FILTER & FEAT)
         // ==========================================
         
@@ -185,16 +185,32 @@
             } catch (e) { console.error(e); }
         }
 
-        // Das schlaue 3-Popup-Eingabesystem mit leerem Startfeld & Merkfunktion
+        // Das schlaue 3-Popup-Eingabesystem mit eingebauter Lösch-Sicherung
         function renameProduct(code) {
             let item = products[code] || { rawName: "", datum: "", ort: "" };
 
-            let nameInput = prompt("1. Name des Produkts eingeben:", item.rawName || "");
+            // 1. Popup für den Namen
+            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
             if (nameInput === null) return; 
             
+            // DIE NEUE SICHERUNG: Wenn du "löschen" eintippst, fliegt der Artikel sofort raus!
+            if (nameInput.trim().toLowerCase() === "löschen") {
+                if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
+                    delete products[code];
+                    if (cloudAuthenticated === "true") {
+                        saveToCloud();
+                    } else {
+                        updateListDisplay();
+                    }
+                    return; // Beendet die Funktion sofort, keine weiteren Popups!
+                }
+            }
+            
+            // 2. Popup für das Ablaufdatum
             let datumInput = prompt("2. Ablaufdatum eingeben (oder leer lassen):", item.datum || "");
             if (datumInput === null) return;
 
+            // 3. Popup für den Lagerort
             let ortInput = prompt("3. Lagerort eingeben (oder leer lassen):", item.ort || "");
             if (ortInput === null) return;
 
@@ -257,7 +273,6 @@
             
             if (keys.length === 0) {
                 listDiv.innerHTML = "Dein Bestand ist leer.";
-                // Aktualisiert die Statistik-Box falls vorhanden
                 let statsBox = document.getElementById("stats-anzeige");
                 if (statsBox) statsBox.innerHTML = "Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>";
                 return;
@@ -286,7 +301,6 @@
             
             listDiv.innerHTML = html;
             
-            // Sucht nach der Statistik-Box oder erstellt sie am Ende des Containers
             let statsBox = document.getElementById("stats-anzeige");
             if (!statsBox) {
                 statsBox = document.createElement("div");
@@ -297,7 +311,7 @@
             statsBox.innerHTML = `Insgesamt: <b>${verschiedeneArtikel}</b> verschiedene Artikel | Gesamtstückzahl: <b>${gesamtStueckzahl} Stk.</b> <br><span style="font-size:11px; color:#00b300;">☁️ Cloud-Synchronisierung aktiv</span>`;
         }
 
-        // Passwort-Sperre abfragen, ohne den Kamera-Start-Prozess zu verzögern
+        // Passwort-Sperre abfragen
         setTimeout(() => {
             if (cloudAuthenticated !== "true") {
                 let userPass = prompt("Bitte gib das Bestand-Passwort ein:");
@@ -316,4 +330,3 @@
     </script>
 </body>
 </html>
-
