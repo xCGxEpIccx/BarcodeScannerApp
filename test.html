@@ -8,8 +8,11 @@
         body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
         button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-add { background: #00b300; color: white; }
-        .btn-remove { background: #d90000; color: white; }
+        
+        /* Buttons Hälfte-Hälfte Styling */
+        .mode-container { display: flex; gap: 10px; margin: 10px 0; }
+        .btn-add { background: #00b300; color: white; margin: 0; flex: 1; }
+        .btn-remove { background: #d90000; color: white; margin: 0; flex: 1; }
         
         .sort-container { display: flex; gap: 8px; margin: 15px 0 10px 0; }
         .btn-sort { flex: 1; padding: 10px 5px; font-size: 14px; background: #333; color: #ccc; margin: 0; }
@@ -33,7 +36,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Text oben wie gewünscht restlos gelöscht -->
         
         <!-- Der absolut unzerstörbare Kamerasucher mit Klick-Zündung -->
         <div class="video-container">
@@ -41,8 +43,14 @@
             <video id="webcam" autoplay playsinline></video>
         </div>
         
-        <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
-        <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        <!-- Buttons nebeneinander (Hälfte-Hälfte) -->
+        <div class="mode-container">
+            <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
+            <button class="btn-remove" onclick="setMode('remove')">Entfernen (-)</button>
+        </div>
+
+        <!-- Der gewünschte Status-Label Text -->
+        <h3 id="status-label" style="color: #00b300; margin: 10px 0;">Bereit zum Scannen</h3>
         
         <div class="section-title">📦 Bestand</div>
         
@@ -120,7 +128,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // DEINE UNBERÜHRBARE ANWEISUNG BUCHSTABENGETREU ERFÜLLT: barcodes[0].rawValue
+                        // KORRIGIERT: barcodes[0].rawValue steht hier absolut unantastbar!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -175,17 +183,13 @@
                     products = JSON.parse(content);
                     localStorage.setItem('testProducts', JSON.stringify(products));
                     updateListDisplay();
-                    alert("✅ Bestand erfolgreich aus der GitHub-Cloud geladen!");
+                    alert("Bestand geladen!");
                 } else {
-                    alert("⚠️ Die Datei bestand.json wurde auf GitHub nicht gefunden oder ist leer.");
+                    alert("Die Datei bestand.json wurde auf GitHub nicht gefunden.");
                 }
             } catch (e) { 
                 console.error(e); 
-                alert("❌ Verbindungsfehler zur Cloud!");
+                alert("Verbindungsfehler!");
             }
         }
-
-        async function saveToCloud() {
-            let userPass = prompt("Bitte gib das Passwort ein, um in die Cloud zu speichern:");
-            if (userPass !== "bier123") { alert("❌ Falsches Passwort!"); return; }
 
