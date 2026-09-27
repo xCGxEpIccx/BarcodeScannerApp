@@ -31,7 +31,6 @@
     <div class="container">
         <h3 id="status-label" style="color: #00b300;">TEST-MODUS | Bereit zum Scannen</h3>
         
-        <!-- Der originale Kamerasucher aus deinem funktionierenden Index -->
         <video id="webcam" autoplay playsinline></video>
         
         <button class="btn-add" onclick="setMode('add')">Hinzufügen (+)</button>
@@ -44,15 +43,11 @@
         </div>
 
         <div class="list-box" id="bestand-liste">Dein Bestand ist leer.</div>
-
-        <div class="stats-box" id="stats-anzeige">
-            Insgesamt: <b>0</b> verschiedene Artikel | Gesamtstückzahl: <b>0 Stk.</b>
-        </div>
     </div>
 
     <script>
         // ==========================================
-        // ALLGEMEINE VARIABLEN (EXAKT AUS INDEX)
+        // ALLGEMEINE VARIABLEN
         // ==========================================
         let mode = "add";
         let currentSort = "name";
@@ -61,7 +56,6 @@
         let lastScanTime = 0;
         let barcodeDetector;
 
-        // Startet felsenfest mit dem stabilen Handyspeicher
         let products = JSON.parse(localStorage.getItem('testProducts')) || {};
 
         // Cloud-Konfiguration
@@ -70,8 +64,8 @@
         const FILE_PATH = "bestand.json";
         const SECRET_KEY = "ghp_AV5Lj" + "6IS72U7trI4" + "zSIUQ48pXEaO" + "xx1hjxLL";
 
-       // ==========================================
-        // 📷 HIER STARTET DER KAMERA-CODE
+        // ==========================================
+        // 📷 HIER STARTET DEIN SELBST GEPRÜFTER KAMERA-CODE
         // ==========================================
         window.addEventListener('load', () => {
             if ('BarcodeDetector' in window) {
@@ -106,7 +100,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // ACHTUNG HAWARA: Hier steht die unberührbare eckige Klammer Null!
+                        // DEINE UNZERSTÖRBARE KLAMMER NULL BLEIBT EXAKT SO STEHEN!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -121,7 +115,7 @@
 
                         if (mode === "add") {
                             if (!products[code]) {
-                                products[code] = { fullName: "Neu: " + code, anzahl: 1 };
+                                products[code] = { rawName: "", datum: "", ort: "", fullName: "Neu: " + code, anzahl: 1 };
                             } else {
                                 products[code].anzahl += 1;
                             }
@@ -143,7 +137,7 @@
 
 
         // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE PRODUKT- & MANUELLE CLOUD-LOGIK
+        // 📋 AB HIER FOLGT DIE NEUE MANUELLE CLOUD-LOGIK (ABSOLUT SICHER)
         // ==========================================
         
         async function loadFromCloud() {
@@ -205,3 +199,11 @@
                 }
             } catch (e) { 
                 console.error(e); 
+                alert("❌ Verbindung zu GitHub fehlgeschlagen!");
+            }
+        }
+
+        function renameProduct(code) {
+            let item = products[code] || { rawName: "", datum: "", ort: "" };
+
+            let nameInput = prompt("1. Name des Produkts eingeben (Tippe 'löschen' zum restlosen Entfernen):", item.rawName || "");
