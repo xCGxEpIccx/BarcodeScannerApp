@@ -79,11 +79,21 @@
                 barcodeDetector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39'] });
             }
             
-            // Kamera zündet SOFORT bedingungslos!
+            // ABGETRENNT & ABSOLUTE PRIORITÄT: Kamera zündet SOFORT bedingungslos!
             startKamera();
+
+            // Erstellt die Statistik-Box vorab im Speicher, damit updateListDisplay() nicht abstürzt
+            let statsBox = document.getElementById("stats-anzeige");
+            if (!statsBox) {
+                statsBox = document.createElement("div");
+                statsBox.id = "stats-anzeige";
+                statsBox.style.cssText = "background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 15px; text-align: center; color: #aaa;";
+                document.querySelector('.container').appendChild(statsBox);
+            }
+            
             updateListDisplay();
 
-            // Passwort-Abfrage im Hintergrund nach 300ms verzögert
+            // Passwort-Abfrage im Hintergrund nach 400ms verzögert
             setTimeout(() => {
                 if (cloudAuthenticated !== "true" && cloudAuthenticated !== "false") {
                     let userPass = prompt("Bitte gib das Bestand-Passwort ein (Tippe 'abbrechen' für Offline):");
@@ -99,7 +109,7 @@
                 } else if (cloudAuthenticated === "true") {
                     loadFromCloud();
                 }
-            }, 300);
+            }, 400);
         });
 
         function startKamera() {
@@ -127,7 +137,7 @@
                     const barcodes = await barcodeDetector.detect(video);
                     if (barcodes && barcodes.length > 0) {
                         
-                        // HIER STEHT DIE ECKIGE KLAMMER NULL ABSOLUT FILIGRAN UND UNZERSCHREIDBAR DRIN!
+                        // DEINE PROMPT ANWEISUNG: barcodes[0] felsenfest eingebaut!
                         let code = barcodes[0].rawValue;
                         
                         if (!code) return;
@@ -199,21 +209,4 @@
                     currentSha = getData.sha;
                 }
             } catch(e) {}
-
-            const contentString = btoa(unescape(encodeURIComponent(JSON.stringify(products))));
-            const bodyData = {
-                message: "Bestand aktualisiert",
-                content: contentString
-            };
-            if (currentSha) bodyData.sha = currentSha;
-
-            try {
-                await fetch(url, {
-                    method: "PUT",
-                    headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData)
-                });
-                updateListDisplay();
-            } catch (e) { console.error(e); }
-        }
 
