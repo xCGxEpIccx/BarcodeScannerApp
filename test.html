@@ -194,7 +194,6 @@
                     if (cloudAuthenticated === "true") {
                         saveToCloud();
                     } else {
-                        localStorage.setItem('testProducts', JSON.stringify(products));
                         updateListDisplay();
                     }
                     return;
@@ -237,7 +236,6 @@
             if (cloudAuthenticated === "true") {
                 saveToCloud();
             } else {
-                localStorage.setItem('testProducts', JSON.stringify(products));
                 updateListDisplay();
             }
         }
@@ -283,7 +281,6 @@
                 return;
             }
             
-            // MESSERSCHARF REPARIERT: Vergleicht nameA jetzt korrekt mit nameB (itemB)!
             keys.sort((a, b) => {
                 let itemA = products[a];
                 let itemB = products[b];
@@ -328,4 +325,9 @@
                     cloudAuthenticated = "true";
                     loadFromCloud();
                 } else {
-      
+                    alert("❌ Falsches Passwort! Seite läuft im Offline-Modus.");
+                    document.getElementById("bestand-liste").innerHTML = "Offline-Modus aktiv.";
+                }
+            } else {
+                loadFromCloud();
+       
