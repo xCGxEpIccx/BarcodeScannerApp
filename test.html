@@ -125,8 +125,8 @@
         // 📷 HIER ENDET DER KAMERA-CODE
         // ==========================================
         // ==========================================
-        // ==========================================
-        // 📋 AB HIER FOLGT DIE NEUE CLOUD- & PRODUKT-LOGIK (ABSOLUT STABIL)
+               // ==========================================
+        // 📋 AB HIER FOLGT DIE NEUE CLOUD- & PRODUKT-LOGIK (ABSOLUT STABIL & GETRENNT)
         // ==========================================
         const GITHUB_USER = "xcgxepiccx";
         const GITHUB_REPO = "BarcodeScannerApp";
@@ -163,15 +163,10 @@
                     const content = decodeURIComponent(escape(atob(data.content)));
                     products = JSON.parse(content);
                     localStorage.setItem('testProducts', JSON.stringify(products));
-                    document.getElementById("bestand-liste").innerHTML = ""; 
-                } else {
-                    // Falls die Cloud leer/Fehler meldet, nutzen wir die lokalen Handydaten als Backup
-                    products = JSON.parse(localStorage.getItem('testProducts')) || {};
                 }
                 updateListDisplay();
             } catch (e) { 
                 console.error(e); 
-                products = JSON.parse(localStorage.getItem('testProducts')) || {};
                 updateListDisplay();
             }
         }
@@ -200,6 +195,7 @@
                     headers: { "Authorization": `token ${SECRET_KEY}`, "Content-Type": "application/json" },
                     body: JSON.stringify(bodyData)
                 });
+                // Zeigt die Änderung sofort lokal an, ohne auf die Server-Antwort zu warten!
                 updateListDisplay();
             } catch (e) { console.error(e); }
         }
@@ -214,10 +210,9 @@
                 if (confirm("Möchtest du diesen Artikel wirklich komplett aus dem Bestand löschen?")) {
                     delete products[code];
                     localStorage.setItem('testProducts', JSON.stringify(products));
+                    updateListDisplay();
                     if (cloudAuthenticated === "true") {
                         saveToCloud();
-                    } else {
-                        updateListDisplay();
                     }
                     return;
                 }
@@ -257,10 +252,10 @@
             }
             
             localStorage.setItem('testProducts', JSON.stringify(products));
+            updateListDisplay(); // Aktualisiert die Anzeige SOFORT auf dem Bildschirm!
+
             if (cloudAuthenticated === "true") {
-                saveToCloud();
-            } else {
-                updateListDisplay();
+                saveToCloud(); // Synchronisiert im Hintergrund lautlos mit der Cloud
             }
         }
 
@@ -330,4 +325,6 @@
             for (let i = 0; i < keys.length; i++) {
                 let code = keys[i];
                 let item = products[code];
-     
+                if (item) {
+                    gesamtStueckzahl += (item.anzahl || 0);
+                    let anzeigeText = item.fullName || "Neu: " + code;
